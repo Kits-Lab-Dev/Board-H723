@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "build",
+			"command": "build",
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "DFU Upload",
+			"type": "shell",
+			"command": "${env:STM32CLT_PATH}/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe",
+			"args": [
+				"-c",
+				"port=usb1",
+				"-w",
+				"@CMAKE_BINARY_DIR@/BoardH723.hex",
+				"-s"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": [],
+			"dependsOn": ["build"]
+		}
+	]
+}

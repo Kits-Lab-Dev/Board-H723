@@ -1,0 +1,113 @@
+add_library(luaengine STATIC)
+
+target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
+target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
+
+target_link_libraries(luaengine
+    stm32cubemx
+    nimble
+)
+
+target_include_directories(luaengine
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/app
+        ${CMAKE_SOURCE_DIR}/libs/sys/include
+        ${CMAKE_SOURCE_DIR}/libs/sdram
+        ${CMAKE_SOURCE_DIR}/libs/sdram/lwmem/include
+        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS
+        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/Include
+        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/portable/GCC/ARM_CM4F
+        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/include
+        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
+        ${CMAKE_SOURCE_DIR}/libs/wolfSSL
+        ${CMAKE_SOURCE_DIR}/libs/wolfSSL/wolfssl
+        ${CMAKE_SOURCE_DIR}/libs/esp
+        ${CMAKE_SOURCE_DIR}/libs/FatFs
+        ${CMAKE_SOURCE_DIR}/libs/term
+        ${CMAKE_SOURCE_DIR}/libs/disks
+        ${CMAKE_SOURCE_DIR}/libs/lua
+        lua
+        luajson
+        lfs
+        luasec
+        lsocket
+        luasocket
+)
+
+target_sources( luaengine
+  PUBLIC
+    luaengine.c
+    luarun.c
+    ble/ble.c
+    can/can.c
+    lfs/lfs.c
+    lsocket/lsocket.c
+    lthread/lthread.c
+    luajson/fpconv.c
+    luajson/lua_cjson.c
+    luajson/strbuf.c
+    luasec/config.c
+    luasec/context.c
+    luasec/ec.c
+    luasec/options.c
+    luasec/ssl.c
+    luasec/x509.c
+    luasocket/auxiliar.c
+    luasocket/buffer.c
+    luasocket/compat.c
+    luasocket/except.c
+    luasocket/inet.c
+    luasocket/io.c
+    luasocket/luasocket.c
+    luasocket/mime.c
+    luasocket/options.c
+    luasocket/select.c
+    luasocket/serial.c
+    luasocket/tcp.c
+    luasocket/timeout.c
+    luasocket/udp.c
+    luasocket/unix.c
+    luasocket/unixdgram.c
+    luasocket/unixstream.c
+    luasocket/usocket.c
+    pio/pio.c
+    rtos/rtos.c 
+    serial/serial.c
+    spi/spi.c
+    wifi/wifi.c
+    wire/wire.c
+
+    lua/lapi.c
+    lua/lauxlib.c
+    lua/lbaselib.c
+    lua/lcode.c
+    lua/lcorolib.c
+    lua/lctype.c
+    lua/ldblib.c
+    lua/ldebug.c
+    lua/ldo.c
+    lua/ldump.c
+    lua/lfunc.c
+    lua/lgc.c
+    lua/linit.c
+    lua/liolib.c
+    lua/llex.c
+    lua/lmathlib.c
+    lua/lmem.c
+    lua/loadlib.c
+    lua/lobject.c
+    lua/lopcodes.c
+    lua/loslib.c
+    lua/lparser.c
+    lua/lstate.c
+    lua/lstring.c
+    lua/lstrlib.c
+    lua/ltable.c
+    lua/ltablib.c
+    lua/ltm.c
+    # lua/lua.c
+    lua/lundump.c
+    lua/lutf8lib.c
+    lua/lvm.c
+    lua/lzio.c
+)

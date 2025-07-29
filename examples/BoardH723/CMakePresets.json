@@ -1,0 +1,68 @@
+{
+    "version": 3,
+    "configurePresets": [
+      {
+        "name": "default",
+        "hidden": true,
+        "generator": "Ninja",
+        "binaryDir": "${sourceDir}/build/${presetName}",
+        "toolchainFile": "${sourceDir}/BoardH723.cmake",
+        "cacheVariables": {
+          "CMAKE_VERBOSE_MAKEFILE": "OFF"
+        },
+        "environment": {
+        "SPAM_LEVEL": "quiet"
+      }
+      },
+      {
+        "name": "Debug",
+        "inherits": "default",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Debug"
+        }
+      },
+      {
+        "name": "RelWithDebInfo",
+        "inherits": "default",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        }
+      },
+      {
+        "name": "Release",
+        "inherits": "default",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "Release"
+        }
+      },
+      {
+        "name": "MinSizeRel",
+        "inherits": "default",
+        "cacheVariables": {
+          "CMAKE_BUILD_TYPE": "MinSizeRel"
+        }
+      }
+    ],
+    "buildPresets": [
+      {
+        "name": "Debug",
+        "configurePreset": "Debug",
+        "verbose": false
+      },
+      {
+        "name": "RelWithDebInfo",
+        "configurePreset": "RelWithDebInfo",
+        "verbose": false
+      },
+      {
+        "name": "Release",
+        "configurePreset": "Release",
+        "verbose": false
+      },
+      {
+        "name": "MinSizeRel",
+        "configurePreset": "MinSizeRel",
+        "verbose": false
+      }
+    ]
+  }

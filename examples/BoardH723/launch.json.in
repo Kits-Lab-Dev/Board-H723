@@ -1,0 +1,21 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+	{
+		"name":"stlink",
+		"cwd": "${workspaceRoot}",
+		"executable": "@CMAKE_BINARY_DIR@/BoardH723.elf",
+		"request": "launch",
+		"type": "cortex-debug",
+		"servertype": "stlink",
+		"stm32cubeprogrammer": "${env:STM32CLT_PATH}/STM32CubeProgrammer/bin",
+		"showDevDebugOutput": "none",
+		"preLaunchTask": "build",
+        "svdFile": "${env:STM32CLT_PATH}/STMicroelectronics_CMSIS_SVD/STM32H723.svd",
+		"presentation": {
+			"reveal": "always",
+			"panel": "shared"
+		},
+	}
+	]
+} 
