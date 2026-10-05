@@ -177,6 +177,18 @@ SECTIONS
     _eitcmram_bss = .;   /* end of itcmram bss */
   } >ITCMRAM
 
+  /* Пулы NimBLE в RAM_D3 (third_party/mynewt-nimble, файлы не меняем):
+     mbuf-пулы os_msys и пулы HCI-транспорта. Секция стоит до .bss, чтобы
+     правило *(.bss*) не забрало их раньше. Не обнуляется при старте —
+     пулы инициализирует os_mempool_init(). */
+  .nimble_pools (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *porting/nimble/src/os_msys.c.obj(.bss.os_msys_1_* .bss.os_msys_2_*)
+    *nimble/transport/src/transport.c.obj(.bss.pool_*)
+    . = ALIGN(4);
+  } >RAM_D3
+
   /* Uninitialized data section */
   . = ALIGN(8);
   .bss (NOLOAD) :
@@ -219,7 +231,7 @@ SECTIONS
   {
     . = ALIGN(4);
      *(.spi_buf_section)
-    . = ALIGN(4); 
+    . = ALIGN(4);
 } >RAM_D3
 
   /* Remove information from the standard libraries */

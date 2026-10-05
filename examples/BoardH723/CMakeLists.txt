@@ -143,7 +143,7 @@ file(GLOB WOLFSSH_SOURCES ${WOLFSSH_DIR}/src/*.c)
 add_library(wolfssh OBJECT ${WOLFSSH_SOURCES})
 target_link_libraries(wolfssh PRIVATE board_includes freertos_headers lwmem stm32cubemx)
 
-add_subdirectory(libs/esp/nimble)  
+add_subdirectory(libs/esp/nimble_port)
 add_subdirectory(libs/lua) 
 
 # Add sources to executable

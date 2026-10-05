@@ -25,3 +25,6 @@
 [submodule "third_party/wolfssh"]
 	path = third_party/wolfssh
 	url = https://github.com/wolfSSL/wolfssh.git
+[submodule "third_party/mynewt-nimble"]
+	path = third_party/mynewt-nimble
+	url = https://github.com/apache/mynewt-nimble.git
