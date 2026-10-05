@@ -5,6 +5,7 @@ target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 
 target_link_libraries(luaengine
     stm32cubemx
+    freertos_headers
     nimble
 )
 
@@ -14,9 +15,6 @@ target_include_directories(luaengine
         ${CMAKE_SOURCE_DIR}/libs/sys/include
         ${CMAKE_SOURCE_DIR}/libs/sdram
         ${CMAKE_SOURCE_DIR}/libs/sdram/lwmem/include
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/Include
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/portable/GCC/ARM_CM4F
         ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/include
         ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
         ${CMAKE_SOURCE_DIR}/libs/wolfSSL

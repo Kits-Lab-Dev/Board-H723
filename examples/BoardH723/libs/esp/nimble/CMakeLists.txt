@@ -5,6 +5,7 @@ target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 
 target_link_libraries(nimble
     stm32cubemx
+    freertos_headers
 )
 
 target_include_directories(nimble
@@ -14,9 +15,6 @@ target_include_directories(nimble
         ${CMAKE_SOURCE_DIR}/app
         ${CMAKE_SOURCE_DIR}/libs/esp
 
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/Include
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS/portable/GCC/ARM_CM4F
 
         ${CMAKE_SOURCE_DIR}/libs/esp/nimble/include
         ${CMAKE_SOURCE_DIR}/libs/esp/nimble/transport/include

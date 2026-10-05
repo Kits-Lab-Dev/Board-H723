@@ -147,6 +147,13 @@ SECTIONS
     _eramd1 = .;       /* create a global symbol at ccmram end */
   } >RAM_D1 
 
+  /* ITCM начинается с адреса 0x00000000: объект по этому адресу равен NULL
+     (например, TCB задачи FreeRTOS). Первые 32 байта ITCM не используем. */
+  .itcm_null_guard (NOLOAD) :
+  {
+    . = . + 32;
+  } >ITCMRAM
+
     _siitcmram = LOADADDR(.itcmram);
   .itcmram :
   {

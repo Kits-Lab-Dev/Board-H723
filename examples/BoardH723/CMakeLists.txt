@@ -26,6 +26,10 @@ include("BoardH723.cmake")
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
+# Сторонние библиотеки (git submodule): git submodule update --init
+set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
+set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
+
 # Core project settings
 project(${CMAKE_PROJECT_NAME}) 
 message("Build type: " ${CMAKE_BUILD_TYPE})
@@ -74,9 +78,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/sys/include
     libs/sdram
     libs/sdram/lwmem/include
-    libs/FreeRTOS
-    libs/FreeRTOS/Include
-    libs/FreeRTOS/portable/GCC/ARM_CM4F
     libs/FreeRTOS-Plus-TCP/include
     libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
     libs/dhcp
@@ -96,6 +97,14 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/wolfSSH
 )
 
+# Заголовки FreeRTOS и конфиги библиотек — общие для всех целей
+add_library(freertos_headers INTERFACE)
+target_include_directories(freertos_headers INTERFACE
+    config
+    ${FREERTOS_DIR}/include
+    ${FREERTOS_DIR}/portable/GCC/ARM_CM4F
+)
+
 add_subdirectory(libs/esp/nimble)  
 add_subdirectory(libs/lua) 
 
@@ -112,15 +121,15 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/sys/statvfs.c 
     libs/sys/utils.c 
 
-    libs/FreeRTOS/croutine.c
-    libs/FreeRTOS/event_groups.c
-    libs/FreeRTOS/list.c
-    libs/FreeRTOS/queue.c
-    libs/FreeRTOS/stream_buffer.c
-    libs/FreeRTOS/tasks.c
-    libs/FreeRTOS/timers.c
-    libs/FreeRTOS/portable/GCC/ARM_CM4F/port.c
-    libs/FreeRTOS/portable/MemMang/heap_4.c
+    ${FREERTOS_DIR}/croutine.c
+    ${FREERTOS_DIR}/event_groups.c
+    ${FREERTOS_DIR}/list.c
+    ${FREERTOS_DIR}/queue.c
+    ${FREERTOS_DIR}/stream_buffer.c
+    ${FREERTOS_DIR}/tasks.c
+    ${FREERTOS_DIR}/timers.c
+    ${FREERTOS_DIR}/portable/GCC/ARM_CM4F/port.c
+    ${FREERTOS_DIR}/portable/MemMang/heap_4.c
     
     libs/FreeRTOS-Plus-TCP/FreeRTOS_ARP.c
     libs/FreeRTOS-Plus-TCP/FreeRTOS_BitConfig.c
@@ -234,6 +243,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+    freertos_headers
     nimble 
     luaengine
 ) 

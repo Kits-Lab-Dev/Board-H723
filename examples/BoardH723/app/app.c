@@ -209,8 +209,7 @@ void lowPriorityTickHook()
     }
 }
 
-__RAM_FUNC
-void app() //__RAM_FUNC что бы занять 0-й адрес памяти (ITCMRAM), иначе appTaskStack == NULL
+void app() // адрес 0 в ITCMRAM закрыт секцией .itcm_null_guard в BoardH723.ld
 {
     xTaskCreateStatic(appTask, "appTask", APP_TASK_STACK_SIZE, NULL, APP_TASK_PRIORITY, appTaskStack, &appTaskBuffer);
     vTaskStartScheduler();
