@@ -58,8 +58,10 @@ time_t get_time(time_t *puxTime)
     tm.tm_sec = sTime.Seconds;
     tm.tm_isdst = 0;
 
-    *puxTime = mktime(&tm);
-    return *puxTime;
+    time_t t = mktime(&tm);
+    if (puxTime != NULL)
+        *puxTime = t;
+    return t;
 }
 
 int set_time(const time_t *t)
@@ -67,10 +69,13 @@ int set_time(const time_t *t)
     struct tm tm;
     gmtime_r(t, &tm); // Use UTC time
 
-    RTC_TimeTypeDef sTime;
-    RTC_DateTypeDef sDate;
+    // Неиспользуемые поля обнулены: мусор в WeekDay при записи сдвигается
+    // в биты года регистра RTC_DR и портит год
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
 
     // Convert time_t to RTC format
+    sDate.WeekDay = tm.tm_wday == 0 ? RTC_WEEKDAY_SUNDAY : tm.tm_wday;
     sDate.Year = tm.tm_year - 100; // 100-199 -> 2000-2099
     sDate.Month = tm.tm_mon + 1;
     sDate.Date = tm.tm_mday;
