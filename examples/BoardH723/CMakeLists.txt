@@ -29,6 +29,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 # Сторонние библиотеки (git submodule): git submodule update --init
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
 set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
+set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
 
 # Core project settings
 project(${CMAKE_PROJECT_NAME}) 
@@ -77,8 +78,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     app
     libs/sys/include
     libs/sdram
-    libs/FreeRTOS-Plus-TCP/include
-    libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
+    libs/net
     libs/dhcp
     libs/esp
     ${THIRD_PARTY}/fatfs/source
@@ -96,12 +96,15 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/wolfSSH
 )
 
-# Заголовки FreeRTOS и конфиги библиотек — общие для всех целей
+# Заголовки FreeRTOS, FreeRTOS+TCP и конфиги библиотек — общие для всех целей
 add_library(freertos_headers INTERFACE)
 target_include_directories(freertos_headers INTERFACE
     config
     ${FREERTOS_DIR}/include
     ${FREERTOS_DIR}/portable/GCC/ARM_CM4F
+    ${FREERTOS_TCP_DIR}/include
+    ${FREERTOS_TCP_DIR}/portable/Compiler/GCC
+    libs/net
 )
 
 # lwmem — менеджер памяти SDRAM
@@ -133,50 +136,50 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     ${FREERTOS_DIR}/portable/GCC/ARM_CM4F/port.c
     ${FREERTOS_DIR}/portable/MemMang/heap_4.c
     
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_ARP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_BitConfig.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DHCP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DHCPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DNS.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DNS_Cache.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DNS_Callback.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DNS_Networking.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_DNS_Parser.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_ICMP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IP_Timers.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IP_Utils.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv4_Sockets.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv4_Utils.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv6_Sockets.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_IPv6_Utils.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_ND.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_RA.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_Routing.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_Sockets.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_Stream_Buffer.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_IP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_IP_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_IP_IPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Reception.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_State_Handling.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_State_Handling_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_State_Handling_IPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Transmission.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Transmission_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Transmission_IPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Utils.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Utils_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_Utils_IPv6.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_TCP_WIN.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_Tiny_TCP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_UDP_IP.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_UDP_IPv4.c
-    libs/FreeRTOS-Plus-TCP/FreeRTOS_UDP_IPv6.c
-    libs/FreeRTOS-Plus-TCP/portable/BufferManagement/BufferAllocation_1.c
-    libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/xNetworkInterface.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_ARP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_BitConfig.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DHCP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DHCPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DNS.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DNS_Cache.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DNS_Callback.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DNS_Networking.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_DNS_Parser.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_ICMP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IP_Timers.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IP_Utils.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv4_Sockets.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv4_Utils.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv6_Sockets.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_IPv6_Utils.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_ND.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_RA.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_Routing.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_Sockets.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_Stream_Buffer.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_IP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_IP_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_IP_IPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Reception.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling_IPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission_IPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Utils.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Utils_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Utils_IPv6.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_WIN.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_Tiny_TCP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_UDP_IP.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_UDP_IPv4.c
+    ${FREERTOS_TCP_DIR}/FreeRTOS_UDP_IPv6.c
+    ${FREERTOS_TCP_DIR}/portable/BufferManagement/BufferAllocation_1.c
+    libs/net/xNetworkInterface.c
 
     libs/dhcp/dhcpserver.c
 

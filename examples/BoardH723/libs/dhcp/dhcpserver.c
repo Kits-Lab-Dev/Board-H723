@@ -116,17 +116,36 @@ void dhcpServerTask(void *arg)
         socklen_t addr_len = sizeof(client_addr);
         char buffer[DHCP_PACKET_SIZE];
 
-        int bytes_received = recvfrom(sock, buffer, DHCP_PACKET_SIZE, 0, (struct sockaddr *)&client_addr, &addr_len);
-        if (bytes_received < (ssize_t)sizeof(dhcpMsg))
+        // Принимаем без копирования, чтобы узнать, через какой интерфейс пришёл запрос
+        uint8_t *payload = NULL;
+        int bytes_received = FreeRTOS_recvfrom((Socket_t)sock, &payload, 0, FREERTOS_ZERO_COPY,
+                                               (struct freertos_sockaddr *)&client_addr, &addr_len);
+        if (bytes_received <= 0 || payload == NULL)
         {
             continue;
         }
+        NetworkBufferDescriptor_t *netBuffer = pxUDPPayloadBuffer_to_NetworkBuffer(payload);
+        NetworkEndPoint_t *endPoint = netBuffer != NULL ? netBuffer->pxEndPoint : NULL;
+        if (bytes_received > DHCP_PACKET_SIZE)
+        {
+            bytes_received = DHCP_PACKET_SIZE;
+        }
+        memcpy(buffer, payload, bytes_received);
+        FreeRTOS_ReleaseUDPPayloadBuffer(payload);
+
+        if (bytes_received < (ssize_t)sizeof(dhcpMsg) || endPoint == NULL)
+        {
+            continue;
+        }
+        // Ответ уйдёт через тот же интерфейс: sendto берёт endpoint из сокета
+        ((Socket_t)sock)->pxEndPoint = endPoint;
+
         DHCPServer *server = NULL;
         for (int i = 0; i < SERVER_COUNT; i++)
         {
             if (servers[i] != NULL)
             {
-                if (servers[i]->netInterface == ((Socket_t)sock)->pxEndPoint->pxNetworkInterface)
+                if (servers[i]->netInterface == endPoint->pxNetworkInterface)
                 {
                     server = servers[i];
                     break;

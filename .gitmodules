@@ -7,3 +7,6 @@
 [submodule "third_party/stm32-mw-usb-device"]
 	path = third_party/stm32-mw-usb-device
 	url = https://github.com/STMicroelectronics/stm32-mw-usb-device.git
+[submodule "third_party/FreeRTOS-Plus-TCP"]
+	path = third_party/FreeRTOS-Plus-TCP
+	url = https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git

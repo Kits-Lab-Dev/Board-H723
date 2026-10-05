@@ -15,8 +15,6 @@ target_include_directories(luaengine
         ${CMAKE_SOURCE_DIR}/app
         ${CMAKE_SOURCE_DIR}/libs/sys/include
         ${CMAKE_SOURCE_DIR}/libs/sdram
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/include
-        ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
         ${CMAKE_SOURCE_DIR}/libs/wolfSSL
         ${CMAKE_SOURCE_DIR}/libs/wolfSSL/wolfssl
         ${CMAKE_SOURCE_DIR}/libs/esp

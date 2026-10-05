@@ -106,7 +106,7 @@ bool networkInterfaceInitialise(void)
 	return true;
 }
 
-void vNetworkInterfaceAllocateRAMToBuffers(NetworkBufferDescriptor_t pxNetworkBuffers[ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS])
+size_t uxNetworkInterfaceAllocateRAMToBuffers(NetworkBufferDescriptor_t pxNetworkBuffers[ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS])
 {
 	uint8_t *ucRAMBuffer = ucNetworkPackets;
 	uint32_t ul;
@@ -117,6 +117,7 @@ void vNetworkInterfaceAllocateRAMToBuffers(NetworkBufferDescriptor_t pxNetworkBu
 		*((unsigned *)ucRAMBuffer) = (unsigned)(&(pxNetworkBuffers[ul]));
 		ucRAMBuffer += ETH_RX_BUF_SIZE;
 	}
+	return ETH_RX_BUF_SIZE - ipBUFFER_PADDING;
 }
 
 static BaseType_t xNetworkInterfaceInitialise(NetworkInterface_t *pxInterface)
