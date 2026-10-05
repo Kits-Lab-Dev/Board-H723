@@ -251,10 +251,10 @@ simultaneously, one could define TCP_WIN_SEG_COUNT as 120. */
 
 /* Each TCP socket has a circular buffers for Rx and Tx, which have a fixed
 maximum size.  Define the size of Rx buffer for TCP sockets. */
-#define ipconfigTCP_RX_BUFFER_LENGTH (256 * ipconfigTCP_MSS)
+#define ipconfigTCP_RX_BUFFER_LENGTH (16 * ipconfigTCP_MSS)
 
 /* Define the size of Tx buffer for TCP sockets. */
-#define ipconfigTCP_TX_BUFFER_LENGTH (256 * ipconfigTCP_MSS)
+#define ipconfigTCP_TX_BUFFER_LENGTH (16 * ipconfigTCP_MSS)
 
 /* When using call-back handlers, the driver may check if the handler points to
 real program memory (RAM or flash) or just has a random non-zero value. */
