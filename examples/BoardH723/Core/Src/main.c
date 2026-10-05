@@ -311,6 +311,7 @@ void MPU_Config(void)
   MPU_InitStruct.Number = MPU_REGION_NUMBER4;
   MPU_InitStruct.BaseAddress = 0xC0000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_32MB;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
@@ -319,6 +320,7 @@ void MPU_Config(void)
   MPU_InitStruct.Number = MPU_REGION_NUMBER5;
   MPU_InitStruct.BaseAddress = 0x20000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_128KB;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_SHAREABLE;
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 

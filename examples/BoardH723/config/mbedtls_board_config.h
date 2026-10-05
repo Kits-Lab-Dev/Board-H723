@@ -12,10 +12,16 @@
 
 /* ---- Платформа ---------------------------------------------------------- */
 #define MBEDTLS_PLATFORM_C
-/* Память — куча FreeRTOS (calloc/free переопределены в CMakeLists.txt).
- * В SDRAM (sdramCalloc) не переносить: на плате с кучей в SDRAM проверка подписей
- * в рукопожатии стабильно не проходит, хотя самотесты Mbed TLS там проходят — причина
- * не найдена. Соединение занимает ~25 КБ кучи, поэтому cafile — только нужные корни. */
+/* Память — SDRAM (libs/sdram): буферы соединения ~25 КБ и разобранные корневые
+ * сертификаты (полный набор Mozilla — сотни КБ) не влезут в кучу FreeRTOS.
+ * SDRAM должна быть кэшируемой (MPU, регион 4 не Shareable): FMC не умеет
+ * невыровненное чтение без кэша, а Mbed TLS разбирает пакеты невыровненными словами. */
+#define MBEDTLS_PLATFORM_MEMORY
+#include <stddef.h>
+void *sdramCalloc(size_t nmemb, size_t size);
+void sdramFree(void *p);
+#define MBEDTLS_PLATFORM_CALLOC_MACRO sdramCalloc
+#define MBEDTLS_PLATFORM_FREE_MACRO sdramFree
 #define MBEDTLS_HAVE_ASM
 #define MBEDTLS_NO_PLATFORM_ENTROPY      /* нет /dev/urandom */
 #define MBEDTLS_ENTROPY_HARDWARE_ALT     /* mbedtls_hardware_poll() — аппаратный RNG, libs/tls/tls_port.c */
