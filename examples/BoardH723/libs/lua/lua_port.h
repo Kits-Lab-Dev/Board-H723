@@ -40,6 +40,9 @@ void luaUserStateFree(void *L, void *L1);
 
 #define lstat stat
 
+/* luasec: заглушка в libs/tls/ssl_util.c */
+int SSL_up_ref(void *ssl);
+
 #ifndef LLONG_MAX
 #define LLONG_MAX __LONG_LONG_MAX__
 #endif

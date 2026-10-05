@@ -30,6 +30,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
 set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
 set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
+set(WOLFSSL_DIR ${THIRD_PARTY}/wolfssl)
 
 # Core project settings
 project(${CMAKE_PROJECT_NAME}) 
@@ -62,8 +63,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 
-file(GLOB_RECURSE WOLFSSL_SRC "libs/wolfSSL/src/*.c")
-file(GLOB_RECURSE WOLFSSL_CRYPT "libs/wolfSSL/wolfcrypt/**.c")
 file(GLOB_RECURSE WOLFSSH_SRC "libs/wolfSSH/src/*.c")
 
 # Link directories setup
@@ -73,7 +72,9 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
+# Пути заголовков прошивки — общие для основной цели и сторонних библиотек
+add_library(board_includes INTERFACE)
+target_include_directories(board_includes INTERFACE
     # Add user defined include paths
     app
     libs/sys/include
@@ -90,9 +91,9 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/ntp
     libs/term
     libs/ssh
-    libs/wolfSSL
-    libs/wolfSSL/wolfssl
-    libs/wolfSSL/cyassl
+    libs/tls
+    ${WOLFSSL_DIR}
+    ${WOLFSSL_DIR}/wolfssl
     libs/wolfSSH
 )
 
@@ -131,6 +132,11 @@ target_include_directories(freertos_headers INTERFACE
 # lwmem — менеджер памяти SDRAM
 add_library(lwmem STATIC ${THIRD_PARTY}/lwmem/lwmem/src/lwmem/lwmem.c)
 target_include_directories(lwmem PUBLIC config ${THIRD_PARTY}/lwmem/lwmem/src/include)
+
+# wolfSSL (GPLv3) — TLS и криптография для SSH и luasec
+file(GLOB WOLFSSL_SOURCES ${WOLFSSL_DIR}/src/*.c ${WOLFSSL_DIR}/wolfcrypt/src/*.c)
+add_library(wolfssl OBJECT ${WOLFSSL_SOURCES})
+target_link_libraries(wolfssl PRIVATE board_includes freertos_headers lwmem stm32cubemx)
 
 add_subdirectory(libs/esp/nimble)  
 add_subdirectory(libs/lua) 
@@ -235,9 +241,7 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/ssh/ssh_utils.c 
     libs/ssh/ssh_server.c
 
-    ${WOLFSSL_SRC}
-    libs/wolfSSL/ssl_util.c
-    ${WOLFSSL_CRYPT}
+    libs/tls/ssl_util.c
     ${WOLFSSH_SRC}
 
 )
@@ -248,7 +252,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+    board_includes
     freertos_headers
+    wolfssl
     lwmem
     nimble 
     luaengine
