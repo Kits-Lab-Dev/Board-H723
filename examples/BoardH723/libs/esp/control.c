@@ -2,6 +2,7 @@
 #include "string.h"
 #include "xNetworkInterface.h"
 #include "app.h"
+#include "timers.h"
 
 static wifiConnRecord wifiAP;
 static bool reconnectWiFi = false;
@@ -48,6 +49,14 @@ void controlInit()
 {
 }
 
+// Переподключение нельзя делать прямо в control_rx_process: wifiConnect ждёт ответ ESP,
+// а принимает его та же задача драйвера — она блокируется на EVENT_TIMEOUT и канал встаёт
+static void reconnectDeferred(void *, uint32_t)
+{
+    if (reconnectWiFi)
+        wifiConnect(&wifiAP, true);
+}
+
 esp_err_t control_rx_process(uint8_t *data, uint16_t len)
 {
     ControlMsg *msg = (ControlMsg *)data;
@@ -71,7 +80,7 @@ esp_err_t control_rx_process(uint8_t *data, uint16_t len)
         vNetworkNotifyIFDown(ESP_STA);
         if (reconnectWiFi)
         {
-            wifiConnect(&wifiAP, true);
+            xTimerPendFunctionCall(reconnectDeferred, NULL, 0, 0);
         }
         break;
     case Event_StationConnectedToESPSoftAP:

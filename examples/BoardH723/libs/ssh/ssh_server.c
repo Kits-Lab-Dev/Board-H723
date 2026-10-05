@@ -79,6 +79,9 @@
 
 static const char echoserverBanner[] = "wolfSSH_Server_1.0\n";
 
+// Ошибка одной сессии не должна останавливать весь SSH-сервер
+#define WOLFSSH_NO_EXIT
+
 static int quit = 0;
 wolfSSL_Mutex doneLock;
 

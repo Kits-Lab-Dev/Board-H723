@@ -436,7 +436,7 @@ static int execute(term_t *trm, int argc, const char *const *argv)
     {
         trm->output(trm, "Available commands:\r\n");
 #ifdef WITH_LUA
-        trm->output(trm, "  lua <script> or\r\n      -t <script.lua>   - Run Lua script\r\n");
+        trm->output(trm, "  lua <script> or\r\n      -f <script.lua>   - Run Lua script\r\n");
 #endif
         trm->output(trm, "  ls [-l] [dir]         - List directory contents\r\n");
         trm->output(trm, "  cd <dir>              - Change current directory\r\n");

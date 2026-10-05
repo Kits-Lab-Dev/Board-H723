@@ -72,7 +72,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Оптимизация сборки библиотек
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# PIC не включать: стартовый код не копирует .got в RAM, глобальные адреса в библиотеках становятся нулевыми
 set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 

@@ -131,16 +131,18 @@ LUA_LIB_FUNC static int scan(lua_State *L)
     lua_newtable(L);
     for (int i = 0; i < n; ++i)
     {
-        lua_pushstring(L, apRecs[i].ssid);
-        lua_rawseti(L, -2, i + 1);
-        char *bssid = pvPortMalloc(19);
+        // элемент — таблица {ssid, bssid, rssi, chnl}, как в docs/wifi.md
+        lua_newtable(L);
+        lua_pushstring(L, (const char *)apRecs[i].ssid);
+        lua_setfield(L, -2, "ssid");
+        char bssid[19];
         macToString(apRecs[i].bssid, bssid);
         lua_pushstring(L, bssid);
-        vPortFree(bssid);
-        lua_rawseti(L, -2, i + 1);
-        lua_pushnumber(L, apRecs[i].rssi);
-        lua_rawseti(L, -2, i + 1);
-        lua_pushnumber(L, apRecs[i].chnl);
+        lua_setfield(L, -2, "bssid");
+        lua_pushinteger(L, apRecs[i].rssi);
+        lua_setfield(L, -2, "rssi");
+        lua_pushinteger(L, apRecs[i].chnl);
+        lua_setfield(L, -2, "chnl");
         lua_rawseti(L, -2, i + 1);
     }
     sdramFree(apRecs);

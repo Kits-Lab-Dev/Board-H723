@@ -4,8 +4,28 @@
 #include "sys/errno.h"
 #include "sys/poll.h"
 #include <reent.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include "app.h"
 
 int h_errno;
+
+// Дескриптор сокета — указатель на FreeRTOS_Socket_t (в RAM), файлы FatFs — малые числа
+// (то же правило, что в libs/disks/wrappers.c)
+#define IS_SOCKET_FD(fd) ((size_t)(fd) > DTCMRAM_ADDR)
+
+// Коды pdFREERTOS_ERRNO_* совпадают с errno newlib, поэтому ошибку FreeRTOS можно отдать как есть
+static int setErrno(BaseType_t freertosErr)
+{
+    _REENT->_errno = (int)-freertosErr;
+    return -1;
+}
+
+static bool isNonBlocking(Socket_t s)
+{
+    return ((FreeRTOS_Socket_t *)s)->xReceiveBlockTime == 0;
+}
 
 int socket(int domain, int type, int protocol)
 {
@@ -29,12 +49,33 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
 {
-    return FreeRTOS_connect((Socket_t)sockfd, addr, addrlen);
+    BaseType_t ret = FreeRTOS_connect((Socket_t)sockfd, addr, addrlen);
+    if (ret == 0)
+        return 0;
+    // Неблокирующий сокет: соединение начато, ждать готовности через poll()
+    if (ret == -pdFREERTOS_ERRNO_EWOULDBLOCK)
+        return setErrno(-pdFREERTOS_ERRNO_EINPROGRESS);
+    return setErrno(ret);
 }
 
 int send(int sockfd, const void *buf, size_t len, int flags)
 {
-    return (int)FreeRTOS_send((Socket_t)sockfd, buf, len, flags);
+    Socket_t s = (Socket_t)sockfd;
+    BaseType_t ret = FreeRTOS_send(s, buf, len, flags);
+    if (ret > 0)
+        return (int)ret;
+    if (ret == 0)
+    {
+        if (len > 0 && (isNonBlocking(s) || (flags & FREERTOS_MSG_DONTWAIT)))
+            return setErrno(-pdFREERTOS_ERRNO_EAGAIN);
+        return 0;
+    }
+    if (ret == -pdFREERTOS_ERRNO_ENOTCONN)
+    {
+        _REENT->_errno = EPIPE; // соединение закрыто
+        return -1;
+    }
+    return setErrno(ret);
 }
 
 int sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen)
@@ -64,7 +105,10 @@ int recv(int sockfd, void *buf, size_t len, int flags)
     } else {
         // For TCP, use FreeRTOS_recv
         int ret = FreeRTOS_recv(socket, buf, len, flags);
-        if (ret == 0) {
+        if (ret == 0 && len > 0 && (isNonBlocking(socket) || (flags & FREERTOS_MSG_DONTWAIT))) {
+            // Данных пока нет — по POSIX это EAGAIN, а не 0 (0 означает закрытое соединение)
+            return setErrno(-pdFREERTOS_ERRNO_EAGAIN);
+        } else if (ret == 0) {
             _REENT->_errno = 0;
             return 0;
         } else if (ret == -pdFREERTOS_ERRNO_ENOTCONN) {
@@ -403,15 +447,53 @@ int inet_pton(int af, const char *src, void *dst)
     return 0;
 }
 
+// POSIX select() здесь не реализуем: fd_set — битовая маска по номерам дескрипторов, а сокеты —
+// указатели, в маску они не помещаются. Раньше fd_set передавался в FreeRTOS_select как SocketSet_t
+// и портил память. Ждать сокеты — через poll().
 int select(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
 {
-    TickType_t ticks;
-    if(timeout == NULL)
-        ticks = 0;
-    else
-        ticks = pdMS_TO_TICKS(timeout->tv_sec * 1000 + timeout->tv_usec / 1000);
+    UNUSED(readfds);
+    UNUSED(writefds);
+    UNUSED(exceptfds);
+    if (n <= 0)
+    {
+        // только ожидание
+        if (timeout != NULL)
+            vTaskDelay(pdMS_TO_TICKS(timeout->tv_sec * 1000 + timeout->tv_usec / 1000));
+        return 0;
+    }
+    _REENT->_errno = ENOSYS;
+    return -1;
+}
 
-    return FreeRTOS_select((SocketSet_t)readfds, ticks);
+// fcntl для сокетов: O_NONBLOCK = нулевые таймауты приёма/передачи FreeRTOS+TCP
+int fcntl(int fd, int cmd, ...)
+{
+    if (!IS_SOCKET_FD(fd))
+    {
+        _REENT->_errno = ENOSYS; // для файлов FatFs не реализовано
+        return -1;
+    }
+    Socket_t s = (Socket_t)fd;
+    switch (cmd)
+    {
+    case F_GETFL:
+        return O_RDWR | (isNonBlocking(s) ? O_NONBLOCK : 0);
+    case F_SETFL:
+    {
+        va_list ap;
+        va_start(ap, cmd);
+        int flags = va_arg(ap, int);
+        va_end(ap);
+        TickType_t t = (flags & O_NONBLOCK) ? 0 : portMAX_DELAY;
+        FreeRTOS_setsockopt(s, 0, FREERTOS_SO_RCVTIMEO, &t, sizeof(t));
+        FreeRTOS_setsockopt(s, 0, FREERTOS_SO_SNDTIMEO, &t, sizeof(t));
+        return 0;
+    }
+    default:
+        _REENT->_errno = EINVAL;
+        return -1;
+    }
 }
 
 char *
@@ -463,78 +545,76 @@ hstrerror(int herr)
 	return "Error number out of range (hstrerror)";
 }
 
+// poll() поверх наборов сокетов FreeRTOS+TCP (FreeRTOS_select)
 int poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
-    struct timeval tv = {
-        // timeout is in milliseconds
-        .tv_sec = timeout / 1000,
-        .tv_usec = (timeout % 1000) * 1000,
-    };
-    int max_fd = -1;
-    fd_set readfds;
-    fd_set writefds;
-    fd_set errorfds;
-    struct _reent* r = __getreent();
-    int ret = 0;
-
-    if (fds == NULL) {
-        __errno_r(r) = ENOENT;
+    if (fds == NULL)
+    {
+        _REENT->_errno = EINVAL;
         return -1;
     }
 
-    FD_ZERO(&readfds);
-    FD_ZERO(&writefds);
-    FD_ZERO(&errorfds);
+    SocketSet_t set = FreeRTOS_CreateSocketSet();
+    if (set == NULL)
+    {
+        _REENT->_errno = ENOMEM;
+        return -1;
+    }
 
-    for (unsigned int i = 0; i < nfds; ++i) {
+    int ready = 0;
+    int added = 0;
+    for (nfds_t i = 0; i < nfds; ++i)
+    {
         fds[i].revents = 0;
-
-        if (fds[i].fd < 0) {
-            // revents should remain 0 and events ignored (according to the documentation of poll()).
+        if (fds[i].fd < 0 && !IS_SOCKET_FD(fds[i].fd))
+            continue; // отрицательный дескриптор игнорируется (POSIX)
+        if (!IS_SOCKET_FD(fds[i].fd))
+        {
+            fds[i].revents = POLLNVAL; // файлы FatFs не поддерживаются
+            ready++;
             continue;
         }
-
-        if (fds[i].fd >= FD_SETSIZE) {
-            fds[i].revents |= POLLNVAL;
-            ++ret;
-            continue;
-        }
-
-        if (fds[i].events & (POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI)) {
-            FD_SET(fds[i].fd, &readfds);
-            FD_SET(fds[i].fd, &errorfds);
-            max_fd = MAX(max_fd, fds[i].fd);
-        }
-
-        if (fds[i].events & (POLLOUT | POLLWRNORM | POLLWRBAND)) {
-            FD_SET(fds[i].fd, &writefds);
-            FD_SET(fds[i].fd, &errorfds);
-            max_fd = MAX(max_fd, fds[i].fd);
-        }
+        EventBits_t bits = eSELECT_EXCEPT;
+        if (fds[i].events & (POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI))
+            bits |= eSELECT_READ;
+        if (fds[i].events & (POLLOUT | POLLWRNORM | POLLWRBAND))
+            bits |= eSELECT_WRITE;
+        FreeRTOS_FD_SET((Socket_t)fds[i].fd, set, bits);
+        added++;
     }
 
-    const int select_ret = select(max_fd + 1, &readfds, &writefds, &errorfds, timeout < 0 ? NULL : &tv);
-
-    if (select_ret > 0) {
-        ret += select_ret;
-
-        for (unsigned int i = 0; i < nfds; ++i) {
-            if (FD_ISSET(fds[i].fd, &readfds)) {
-                fds[i].revents |= POLLIN;
-            }
-
-            if (FD_ISSET(fds[i].fd, &writefds)) {
-                fds[i].revents |= POLLOUT;
-            }
-
-            if (FD_ISSET(fds[i].fd, &errorfds)) {
-                fds[i].revents |= POLLERR;
+    if (added > 0 && ready == 0)
+    {
+        TickType_t ticks = timeout < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeout);
+        if (FreeRTOS_select(set, ticks) > 0)
+        {
+            for (nfds_t i = 0; i < nfds; ++i)
+            {
+                if (!IS_SOCKET_FD(fds[i].fd))
+                    continue;
+                EventBits_t bits = FreeRTOS_FD_ISSET((Socket_t)fds[i].fd, set);
+                if (bits & eSELECT_READ)
+                    fds[i].revents |= POLLIN;
+                if (bits & eSELECT_WRITE)
+                    fds[i].revents |= POLLOUT;
+                if (bits & eSELECT_EXCEPT)
+                    fds[i].revents |= POLLERR | POLLHUP;
+                if (fds[i].revents)
+                    ready++;
             }
         }
-    } else {
-        ret = select_ret;
-        // keeping the errno from select()
+    }
+    else if (added == 0 && ready == 0 && timeout > 0)
+    {
+        vTaskDelay(pdMS_TO_TICKS(timeout));
     }
 
-    return ret;
+    // Сокет может состоять только в одном наборе — убираем его перед удалением набора
+    for (nfds_t i = 0; i < nfds; ++i)
+    {
+        if (IS_SOCKET_FD(fds[i].fd))
+            FreeRTOS_FD_CLR((Socket_t)fds[i].fd, set, eSELECT_ALL);
+    }
+    FreeRTOS_DeleteSocketSet(set);
+    return ready;
 }

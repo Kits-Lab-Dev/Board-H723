@@ -57,20 +57,15 @@ void sdCardDetectLoop(void)
         hsd->Instance = SDMMC2;
         hsd->Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
         hsd->Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-        hsd->Init.BusWide = SDMMC_BUS_WIDE_4B;
+        hsd->Init.BusWide = SDMMC_BUS_WIDE_1B;
         hsd->Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-        hsd->Init.ClockDiv = 2;
+        hsd->Init.ClockDiv = 4;
+        // HAL_SD_Init сам переключает шину на Init.BusWide; повторный
+        // HAL_SD_ConfigWideBusOperation читает SCR уже в 4-битном режиме и зависает
         if (HAL_SD_Init(hsd) == HAL_OK)
         {
-            if (HAL_SD_ConfigWideBusOperation(hsd, SDMMC_BUS_WIDE_4B) == HAL_OK)
-            {
-                sdCardInsert = true;
-                sdDiskMount();
-            }
-            else
-            {
-                HAL_SD_DeInit(hsd);
-            }
+            sdCardInsert = true;
+            sdDiskMount();
         }
     }
     else if (HAL_GPIO_ReadPin(SD_DET_GPIO_Port, SD_DET_Pin) == GPIO_PIN_SET && sdCardInsert)

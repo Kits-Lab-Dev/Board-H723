@@ -13,9 +13,10 @@
 #include <sys/types.h>
 #include <FreeRTOS.h>
 
+/* До app.h: по LUA_OUT он выбирает, куда направить print (иначе вывод Lua глушится) */
+#define LUA_OUT
 #include "app.h"
 
-#define LUA_OUT
 #define LUA_PATH_DEFAULT "?.lua;" "/lib/?.lua;" "/ram/lib/?.lua;" "/sd/lib/?.lua;" "/sd/?.lua"
 #define LUA_USE_CTYPE 1
 

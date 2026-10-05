@@ -238,7 +238,9 @@ extern "C"
 
 
 // #define WOLFSSL_QUIC
-#define MAX_CHAIN_DEPTH 2
+/* С wolfSSL 5.9 от глубины зависит и предел размера сообщения Certificate (MAX_CERTIFICATE_SZ):
+ * при 2 цепочка из 3 сертификатов (обычная для Cloudflare и др.) даёт HANDSHAKE_SIZE_ERROR */
+#define MAX_CHAIN_DEPTH 4
 #define SESSION_CACHE_DYNAMIC_MEM
 
 // #define XMALLOC_USER
@@ -279,6 +281,9 @@ extern "C"
 #else
 #define SINGLE_THREADED
 #endif
+/* Без LDREX/STREX: куча лежит в AXI SRAM, MPU помечает её Shareable, и эксклюзивный
+ * доступ там даёт ошибку шины (падение в wolfSSL_FreeSession). Счётчики ссылок — под мьютексом. */
+#define WOLFSSL_NO_ATOMICS
 
 /* ------------------------------------------------------------------------- */
 /* Math Configuration */
@@ -348,6 +353,9 @@ extern "C"
 #define HAVE_SUPPORTED_CURVES
 #define HAVE_ENCRYPT_THEN_MAC
 #define HAVE_EXTENDED_MASTER
+/* SNI: без него CDN (Cloudflare и др.) рвут соединение сразу после ClientHello;
+ * luasec передаёт имя хоста через SSL_set_tlsext_host_name */
+#define HAVE_SNI
 
 #if defined(WOLF_CONF_TLS13) && WOLF_CONF_TLS13 == 1
 #define WOLFSSL_TLS13

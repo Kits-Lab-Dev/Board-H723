@@ -1,6 +1,8 @@
 #include "wolfSSL.I-CUBE-wolfSSL_conf.h"
 #include "wolfssl/ssl.h"
 #include "sys/socket.h"
+#include "FreeRTOS.h"
+#include "FreeRTOS_Sockets.h"
 
 static int iorecv(WOLFSSL *ctx, char *buffer, int length, void *user)
 {
@@ -17,13 +19,16 @@ static int iorecv(WOLFSSL *ctx, char *buffer, int length, void *user)
         return -1;
     }
 
-    int ret = recv(sock, buffer, length, 0);
-    if (ret < 0)
-    {
-        return -1;
-    }
-
-    return ret;
+    // Напрямую через FreeRTOS: errno в newlib здесь общий на все задачи (без NEWLIB_REENTRANT),
+    // его может перетереть другая задача. Сокет у LuaSec неблокирующий: 0 — данных пока нет.
+    BaseType_t ret = FreeRTOS_recv((Socket_t)sock, buffer, length, 0);
+    if (ret > 0)
+        return ret;
+    if (ret == 0 || ret == -pdFREERTOS_ERRNO_EWOULDBLOCK || ret == -pdFREERTOS_ERRNO_EINTR)
+        return WOLFSSL_CBIO_ERR_WANT_READ;
+    if (ret == -pdFREERTOS_ERRNO_ENOTCONN)
+        return WOLFSSL_CBIO_ERR_CONN_CLOSE;
+    return WOLFSSL_CBIO_ERR_GENERAL;
 }
 
 static int iosend(WOLFSSL *ctx, char *buffer, int length, void *user)
@@ -41,13 +46,14 @@ static int iosend(WOLFSSL *ctx, char *buffer, int length, void *user)
         return -1;
     }
 
-    int ret = send(sock, buffer, length, 0);
-    if (ret < 0)
-    {
-        return -1;
-    }
-
-    return ret;
+    BaseType_t ret = FreeRTOS_send((Socket_t)sock, buffer, length, 0);
+    if (ret > 0)
+        return ret;
+    if (ret == 0 || ret == -pdFREERTOS_ERRNO_EWOULDBLOCK || ret == -pdFREERTOS_ERRNO_ENOSPC)
+        return WOLFSSL_CBIO_ERR_WANT_WRITE;
+    if (ret == -pdFREERTOS_ERRNO_ENOTCONN)
+        return WOLFSSL_CBIO_ERR_CONN_CLOSE;
+    return WOLFSSL_CBIO_ERR_GENERAL;
 }
 
 void SSLSetIO(void *ssl)
