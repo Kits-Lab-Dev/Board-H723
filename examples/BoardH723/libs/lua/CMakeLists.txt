@@ -1,4 +1,8 @@
-add_library(luaengine STATIC)
+add_library(luaengine OBJECT)
+
+# Ядро Lua — third_party/lua без изменений; настройки платы в lua_port.h
+set(LUA_DIR ${CMAKE_SOURCE_DIR}/../../third_party/lua)
+target_compile_options(luaengine PRIVATE "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/lua_port.h")
 
 target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
 target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
@@ -23,7 +27,7 @@ target_include_directories(luaengine
         ${CMAKE_SOURCE_DIR}/libs/term
         ${CMAKE_SOURCE_DIR}/libs/disks
         ${CMAKE_SOURCE_DIR}/libs/lua
-        lua
+        ${LUA_DIR}
         luajson
         lfs
         luasec
@@ -32,7 +36,7 @@ target_include_directories(luaengine
 )
 
 target_sources( luaengine
-  PUBLIC
+  PRIVATE
     luaengine.c
     luarun.c
     ble/ble.c
@@ -74,37 +78,36 @@ target_sources( luaengine
     wifi/wifi.c
     wire/wire.c
 
-    lua/lapi.c
-    lua/lauxlib.c
-    lua/lbaselib.c
-    lua/lcode.c
-    lua/lcorolib.c
-    lua/lctype.c
-    lua/ldblib.c
-    lua/ldebug.c
-    lua/ldo.c
-    lua/ldump.c
-    lua/lfunc.c
-    lua/lgc.c
-    lua/linit.c
-    lua/liolib.c
-    lua/llex.c
-    lua/lmathlib.c
-    lua/lmem.c
-    lua/loadlib.c
-    lua/lobject.c
-    lua/lopcodes.c
-    lua/loslib.c
-    lua/lparser.c
-    lua/lstate.c
-    lua/lstring.c
-    lua/lstrlib.c
-    lua/ltable.c
-    lua/ltablib.c
-    lua/ltm.c
-    # lua/lua.c
-    lua/lundump.c
-    lua/lutf8lib.c
-    lua/lvm.c
-    lua/lzio.c
+    ${LUA_DIR}/lapi.c
+    ${LUA_DIR}/lauxlib.c
+    ${LUA_DIR}/lbaselib.c
+    ${LUA_DIR}/lcode.c
+    ${LUA_DIR}/lcorolib.c
+    ${LUA_DIR}/lctype.c
+    ${LUA_DIR}/ldblib.c
+    ${LUA_DIR}/ldebug.c
+    ${LUA_DIR}/ldo.c
+    ${LUA_DIR}/ldump.c
+    ${LUA_DIR}/lfunc.c
+    ${LUA_DIR}/lgc.c
+    ${LUA_DIR}/linit.c
+    ${LUA_DIR}/liolib.c
+    ${LUA_DIR}/llex.c
+    ${LUA_DIR}/lmathlib.c
+    ${LUA_DIR}/lmem.c
+    ${LUA_DIR}/loadlib.c
+    ${LUA_DIR}/lobject.c
+    ${LUA_DIR}/lopcodes.c
+    ${LUA_DIR}/loslib.c
+    ${LUA_DIR}/lparser.c
+    ${LUA_DIR}/lstate.c
+    ${LUA_DIR}/lstring.c
+    ${LUA_DIR}/lstrlib.c
+    ${LUA_DIR}/ltable.c
+    ${LUA_DIR}/ltablib.c
+    ${LUA_DIR}/ltm.c
+    ${LUA_DIR}/lundump.c
+    ${LUA_DIR}/lutf8lib.c
+    ${LUA_DIR}/lvm.c
+    ${LUA_DIR}/lzio.c
 )

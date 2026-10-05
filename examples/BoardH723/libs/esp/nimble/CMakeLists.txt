@@ -1,4 +1,4 @@
-add_library(nimble STATIC)
+add_library(nimble OBJECT)
 
 target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
 target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
@@ -52,7 +52,7 @@ file(GLOB_RECURSE NIMBLE_HOST_STORE_SOURCES "host/store/**/*.c")
 file(GLOB_RECURSE NIMBLE_PORTING_SOURCES "porting/**/*.c")
 file(GLOB_RECURSE NIMBLE_TRANSPORT_SOURCES "transport/**/*.c")
 
-target_sources(nimble PUBLIC 
+target_sources(nimble PRIVATE 
     ${NIMBLE_DRIVERS_SOURCES}
     ${NIMBLE_TINYCRYPT_SOURCES}
     ${NIMBLE_HOST_SOURCES}

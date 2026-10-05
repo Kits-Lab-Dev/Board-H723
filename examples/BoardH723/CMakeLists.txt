@@ -96,6 +96,27 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/wolfSSH
 )
 
+# Определения проекта — общие для прошивки и библиотек (luaengine, nimble, ...)
+add_compile_definitions(
+    # Add user defined symbols
+    _GNU_SOURCE
+    _POSIX_C_SOURCE=200809L 
+
+    ADC_VER_V5_X
+    APP_DEBUG
+    APP_DEBUG_LEVEL=4
+    malloc=pvPortMalloc
+    free=vPortFree
+    realloc=pvPortRealloc
+    calloc=pvPortCalloc 
+
+    # SSH_SERVER_STACK_SDRAM
+    SSH_PASSWORD="123"
+    SSH_BUFFER_SIZE=4096
+
+    WITH_LUA
+)
+
 # Заголовки FreeRTOS, FreeRTOS+TCP и конфиги библиотек — общие для всех целей
 add_library(freertos_headers INTERFACE)
 target_include_directories(freertos_headers INTERFACE
@@ -119,7 +140,6 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     # Add user sources here
     app/app.c
     app/log.c
-    libs/lua/lua_macros.h
     libs/sdram/sdram.c
 
     libs/sys/socket.c 
@@ -222,26 +242,6 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
 
 )
 
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
-    _GNU_SOURCE
-    _POSIX_C_SOURCE=200809L 
-
-    ADC_VER_V5_X
-    APP_DEBUG
-    APP_DEBUG_LEVEL=4
-    malloc=pvPortMalloc
-    free=vPortFree
-    realloc=pvPortRealloc
-    calloc=pvPortCalloc 
-
-    # SSH_SERVER_STACK_SDRAM
-    SSH_PASSWORD="123"
-    SSH_BUFFER_SIZE=4096
-
-    WITH_LUA
-)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
