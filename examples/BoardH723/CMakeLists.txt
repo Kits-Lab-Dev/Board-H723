@@ -31,6 +31,7 @@ set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
 set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
 set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
 set(WOLFSSL_DIR ${THIRD_PARTY}/wolfssl)
+set(WOLFSSH_DIR ${THIRD_PARTY}/wolfssh)
 
 # Core project settings
 project(${CMAKE_PROJECT_NAME}) 
@@ -63,7 +64,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <LINK_FLAGS> <OBJECTS>")
 
-file(GLOB_RECURSE WOLFSSH_SRC "libs/wolfSSH/src/*.c")
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -94,7 +94,7 @@ target_include_directories(board_includes INTERFACE
     libs/tls
     ${WOLFSSL_DIR}
     ${WOLFSSL_DIR}/wolfssl
-    libs/wolfSSH
+    ${WOLFSSH_DIR}
 )
 
 # Определения проекта — общие для прошивки и библиотек (luaengine, nimble, ...)
@@ -137,6 +137,11 @@ target_include_directories(lwmem PUBLIC config ${THIRD_PARTY}/lwmem/lwmem/src/in
 file(GLOB WOLFSSL_SOURCES ${WOLFSSL_DIR}/src/*.c ${WOLFSSL_DIR}/wolfcrypt/src/*.c)
 add_library(wolfssl OBJECT ${WOLFSSL_SOURCES})
 target_link_libraries(wolfssl PRIVATE board_includes freertos_headers lwmem stm32cubemx)
+
+# wolfSSH (GPLv3) — SSH/SFTP-сервер
+file(GLOB WOLFSSH_SOURCES ${WOLFSSH_DIR}/src/*.c)
+add_library(wolfssh OBJECT ${WOLFSSH_SOURCES})
+target_link_libraries(wolfssh PRIVATE board_includes freertos_headers lwmem stm32cubemx)
 
 add_subdirectory(libs/esp/nimble)  
 add_subdirectory(libs/lua) 
@@ -242,7 +247,6 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/ssh/ssh_server.c
 
     libs/tls/ssl_util.c
-    ${WOLFSSH_SRC}
 
 )
 
@@ -255,6 +259,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     board_includes
     freertos_headers
     wolfssl
+    wolfssh
     lwmem
     nimble 
     luaengine

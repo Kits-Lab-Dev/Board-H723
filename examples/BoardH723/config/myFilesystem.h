@@ -347,8 +347,9 @@ static inline int SFTP_GetAttributes(void *fs, const char *fileName, _FILEATRB *
 }
 
 static inline int SFTP_GetAttributes_Handle(void *ssh, byte *handle, int handleSz,
-                                            _FILEATRB *atr)
+                                            char *name, _FILEATRB *atr)
 {
+    (void)name; // wolfSSH 1.5: имя файла нужно только при WOLFSSH_STOREHANDLE
     struct stat stats;
     if (handleSz != sizeof(word32))
     {

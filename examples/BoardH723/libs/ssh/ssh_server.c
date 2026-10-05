@@ -448,7 +448,6 @@ static void ServerTask(void *)
     INF("sftp server task started\r\n");
     WOLFSSH_CTX *ctx = NULL;
     PwMapList pwMapList;
-    WS_UserAuthData_Keyboard kbAuthData;
     WS_SOCKET_T listenFd = WOLFSSH_SOCKET_INVALID;
     word32 defaultHighwater = EXAMPLE_HIGHWATER_MARK;
     word32 threadCount = 0;
@@ -463,8 +462,6 @@ static void ServerTask(void *)
 #ifdef WOLFSSH_CERTS
     char *caCert = NULL;
 #endif
-
-    kbAuthData.promptCount = 0;
 
     wc_InitMutex(&doneLock);
 
@@ -649,7 +646,6 @@ static void ServerTask(void *)
         }
         wolfSSH_SetUserAuthCtx(ssh, &pwMapList);
         wolfSSH_SetKeyingCompletionCbCtx(ssh, (void *)ssh);
-        wolfSSH_SetKeyboardAuthCtx(ssh, &kbAuthData);
         /* Use the session object for its own highwater callback ctx */
         if (defaultHighwater > 0)
         {
@@ -691,12 +687,6 @@ static void ServerTask(void *)
     if (listenFd != WOLFSSH_SOCKET_INVALID)
     {
         WCLOSESOCKET(listenFd);
-    }
-    if (kbAuthData.promptCount > 0)
-    {
-        WFREE(kbAuthData.promptLengths, NULL, 0);
-        WFREE(kbAuthData.prompts, NULL, 0);
-        WFREE(kbAuthData.promptEcho, NULL, 0);
     }
 
 error:

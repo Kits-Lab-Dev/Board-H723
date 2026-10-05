@@ -483,6 +483,7 @@ int wsUserAuth(byte authType, WS_UserAuthData *authData, void *ctx)
                       authData->sf.password.passwordSz,
                       authHash);
     }
+#ifdef WOLFSSH_KEYBOARD_INTERACTIVE
     else if (authType == WOLFSSH_USERAUTH_KEYBOARD)
     {
         if (authData->sf.keyboard.responseCount != 1)
@@ -493,6 +494,7 @@ int wsUserAuth(byte authType, WS_UserAuthData *authData, void *ctx)
                       authData->sf.keyboard.responseLengths[0],
                       authHash);
     }
+#endif
     else if (authType == WOLFSSH_USERAUTH_PUBLICKEY)
     {
         wc_Sha256Hash(authData->sf.publicKey.publicKey,
