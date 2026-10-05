@@ -20,6 +20,7 @@
 #include "ssh_server.h"
 #endif
 #include "rng.h"
+#include "tls_port.h"
 #include "ntpclient.h"
 
 #ifdef WITH_LUA
@@ -34,13 +35,13 @@
 
 uint8_t ucHeap[configTOTAL_HEAP_SIZE] __RAM_D1;
 
-uint32_t ulNextRand;
+/* Случайные числа для FreeRTOS+TCP (порты, начальные номера TCP, ID DNS) —
+ * аппаратный RNG, а не LCG: у LCG значения предсказуемы */
 UBaseType_t uxRand(void)
 {
-    const uint32_t ulMultiplier = 1664525UL;
-    const uint32_t ulIncrement = 1013904223UL;
-    ulNextRand = (ulMultiplier * ulNextRand + ulIncrement);
-    return ulNextRand;
+    uint32_t v = 0;
+    hw_random((unsigned char *)&v, sizeof(v));
+    return v;
 }
 
 bool enterBootloaderMode = false;
@@ -130,8 +131,6 @@ static void checkBootMode()
 
 void appTask(void *)
 {
-    HAL_RNG_GenerateRandomNumber(&hrng, &ulNextRand);
-
     MX_USB_DEVICE_Init();
 
     HAL_DTS_Start(&hdts);
