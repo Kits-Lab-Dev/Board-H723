@@ -10,6 +10,10 @@ git clone https://github.com/Kits-Lab-Dev/Board-H723.git
 cd Board-H723
 git submodule update --init
 ```
+На Windows перед клонированием включите длинные пути, иначе часть файлов wolfSSL не создастся:
+```bash
+git config --global core.longpaths true
+```
 Флаг `--recursive` не нужен: вложенные submodule библиотек (тесты, порты для других платформ) для сборки не используются.
 
 ## Структура директорий
