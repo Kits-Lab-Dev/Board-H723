@@ -90,17 +90,11 @@ int recv(int sockfd, void *buf, size_t len, int flags)
     // Check if the socket is a UDP socket
     if (socket->ucProtocol == IPPROTO_UDP) {
         // For UDP, use recvfrom with NULL for src_addr and addrlen
+        // Нет данных — FreeRTOS возвращает -EWOULDBLOCK: по POSIX это -1 и errno,
+        // иначе LuaSocket принимал отрицательный код за пустую датаграмму
         int ret = FreeRTOS_recvfrom(socket, buf, len, flags, NULL, NULL);
-        if (ret == 0) {
-            _REENT->_errno = 0;
-            return 0;
-        } else if (ret == -pdFREERTOS_ERRNO_ENOTCONN) {
-            _REENT->_errno = -2;
-            return -2;
-        } else if (ret == -pdFREERTOS_ERRNO_ETIMEDOUT) {
-            _REENT->_errno = -1;
-            return -1;
-        }
+        if (ret < 0)
+            return setErrno(ret);
         return ret;
     } else {
         // For TCP, use FreeRTOS_recv
@@ -124,19 +118,9 @@ int recv(int sockfd, void *buf, size_t len, int flags)
 
 int recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen)
 {
-   int ret = FreeRTOS_recvfrom((Socket_t)sockfd, buf, len, flags, src_addr, addrlen);
-        if(ret == 0){
-        _REENT->_errno = 0;
-    return 0;
-    }
-    else if(ret == -pdFREERTOS_ERRNO_ENOTCONN){
-        _REENT->_errno = -2;
-        return -2;
-    }
-    else if(ret == -pdFREERTOS_ERRNO_ETIMEDOUT){
-        _REENT->_errno = -1;
-        return -1;
-    }
+    int ret = FreeRTOS_recvfrom((Socket_t)sockfd, buf, len, flags, src_addr, addrlen);
+    if (ret < 0)
+        return setErrno(ret);
     return ret;
 }
 
@@ -344,19 +328,18 @@ int getaddrinfo(const char *node, const char *service, const struct addrinfo *hi
     if (ret == 0) {
         (*res)->ai_addr->sin_family = AF_INET;
         (*res)->ai_addr->sin_port = service ? FreeRTOS_htons(atoi(service)) : 0;
-        (*res)->ai_addr->sin_flowinfo = hints ? hints->ai_addr->sin_flowinfo : 0;
+        (*res)->ai_addr->sin_flowinfo = 0; /* ai_addr в hints обычно NULL */
 
-        if ((*res)->ai_protocol == 0 && hints && hints->ai_protocol == 0) {
-            (*res)->ai_protocol = IPPROTO_TCP;
-        } else if (hints) {
-            (*res)->ai_protocol = hints->ai_protocol;
-        }
-
-        if ((*res)->ai_socktype == 0 && hints && hints->ai_socktype == 0) {
-            (*res)->ai_socktype = SOCK_STREAM;
-        } else if (hints) {
+        if (hints && hints->ai_socktype != 0)
             (*res)->ai_socktype = hints->ai_socktype;
-        }
+        else if ((*res)->ai_socktype == 0)
+            (*res)->ai_socktype = SOCK_STREAM;
+
+        /* Протокол по типу сокета: UDP-сокет с IPPROTO_TCP валит configASSERT в FreeRTOS_socket */
+        if (hints && hints->ai_protocol != 0)
+            (*res)->ai_protocol = hints->ai_protocol;
+        else
+            (*res)->ai_protocol = (*res)->ai_socktype == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
     }
 
     return ret;
@@ -383,7 +366,7 @@ int getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
         return (EAI_FAMILY);
     if (serv != NULL)
     {
-        snprintf(tmpserv, sizeof(tmpserv), "%lu", ntohl(sin->sin_port));
+        snprintf(tmpserv, sizeof(tmpserv), "%u", (unsigned)ntohs(sin->sin_port));
         if (strlcpy(serv, tmpserv, servlen) >= servlen)
             return (EAI_MEMORY);
     }
