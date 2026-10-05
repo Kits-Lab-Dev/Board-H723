@@ -1,2 +1,4 @@
 build/
 .vscode/
+# Резервные копии STM32CubeMX при генерации кода
+Backup/

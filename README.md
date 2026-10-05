@@ -3,13 +3,38 @@
 ## Описание
 Репозиторий содержит базовую конфигурацию для разработки на отладочной плате `Доска-H723` на базе микроконтроллера STM32H723. Включает в себя проекты для работы с STM32H723 и ESP32С2, файловыми системами, SSH/SFTP, терминалом и другими компонентами.
 
+## Получение исходников
+Сторонние библиотеки подключены как git submodule, поэтому после клонирования их нужно скачать:
+```bash
+git clone https://github.com/Kits-Lab-Dev/Board-H723.git
+cd Board-H723
+git submodule update --init
+```
+Флаг `--recursive` не нужен: вложенные submodule библиотек (тесты, порты для других платформ) для сборки не используются.
+
 ## Структура директорий
+- `third_party/` - Сторонние библиотеки (git submodule, без изменений) и FatFs, см. [THIRD_PARTY.md](THIRD_PARTY.md)
 - `examples/BoardH723/` - Основной проект для Board-H723
   - `app/` - Исходный код приложения
+  - `config/` - Настройки библиотек (FreeRTOSConfig.h, FreeRTOSIPConfig.h, ffconf.h, wolfSSL/wolfSSH и др.)
+  - `libs/` - Наши библиотеки (ESP, сеть, SSH, Lua-модули, диски и др.)
+  - `cmake/patch_source.cmake` - Точечные правки сторонних файлов при сборке (оригиналы не меняются)
   - `Core/`, `Drivers/` - Сгенерированные файлы STM32CubeMX
-  - `libs/` - Библиотеки (ESP, FreeRTOS, FatFs, SSH, Lua и др.)
 - `examples/ESP-Loader/` - Загрузчик прошивки для ESP32
 - `hardware/` - Схемы и PCB платы (pcb.pdf, sch.pdf)
+
+## Сборка
+```bash
+cd examples/BoardH723
+cmake --preset Release
+cmake --build build/Release
+```
+
+SSH/SFTP-сервер и TLS для Lua построены на wolfSSH и wolfSSL, которые распространяются под **GPLv3**.
+По умолчанию они включены, и прошивка целиком распространяется под GPLv3. Для закрытого проекта их можно выключить:
+```bash
+cmake --preset Release -DH723_WITH_SSH=OFF -DH723_WITH_TLS=OFF
+```
 
 ### 1. examples/**BoardH723**
 - FreeRTOS - многопоточная операционная система реального времени
@@ -50,3 +75,6 @@
 - `hardware/sch.pdf` - Эскиз платы
 
 Дополнительную информацию см. в README подкаталогов.
+
+## Лицензия
+Код KitsLab — MIT, см. [LICENSE](LICENSE). Сторонние компоненты сохраняют свои лицензии, см. [THIRD_PARTY.md](THIRD_PARTY.md).

@@ -9,8 +9,11 @@
 ## Структура проекта
 
 - `app/` - Исходный код приложения
+- `config/` - Настройки библиотек (FreeRTOS, FreeRTOS+TCP, FatFs, lwmem, wolfSSL, wolfSSH)
+- `libs/` - Наши библиотеки
+- `cmake/patch_source.cmake` - Точечные правки сторонних файлов при сборке
 - `Core/`, `Drivers/` - Файлы сгенерированые STM32CubeMX
-- `libs/` - Библиотеки
+- `../../third_party/` - Сторонние библиотеки (git submodule), см. [THIRD_PARTY.md](../../THIRD_PARTY.md)
 
 ## Требования
 
@@ -21,14 +24,16 @@
 
 ## Состав проекта
 
-- `libs/esp` Драйвер для [esp32c2phy](https://github.com/Kits-Lab-Dev/esp32c2phy). Управление WiFi. BLE - стек (NimBLE).
-- `libs/FreeRTOS` ОС реального времени.
-- `libs/FreeRTOS-Plus-TCP` TCP/IP стек.
+- `libs/esp` Драйвер для [esp32c2phy](https://github.com/Kits-Lab-Dev/esp32c2phy). Управление WiFi. BLE - стек [NimBLE](https://github.com/apache/mynewt-nimble) (`third_party/mynewt-nimble`, наш конфиг — `libs/esp/nimble_port`).
+- `libs/net` Сетевой драйвер FreeRTOS+TCP для Wi-Fi (ESP32-C2) и USB-NCM.
+- [FreeRTOS](https://github.com/FreeRTOS/FreeRTOS-Kernel) ОС реального времени (`third_party/FreeRTOS-Kernel`).
+- [FreeRTOS-Plus-TCP](https://github.com/FreeRTOS/FreeRTOS-Plus-TCP) TCP/IP стек (`third_party/FreeRTOS-Plus-TCP`).
 - `libs/dhcp` DHCP сервер, выдает IP адреса клиентам WiFi AP и устройствам подключенным по USB-NCM
 - `libs/disks` Библиотеки для работы с файловой системой (uSD-карта и Ram-Диск). Обертки для функций стандартных библиотек
-- `libs/FatFs` Библиотека для работы с файловой системой FAT
+- [FatFs](http://elm-chan.org/fsw/ff/) Библиотека для работы с файловой системой FAT (`third_party/fatfs`)
 - `libs/sdram` Библиотека для работы с микросхемой памяти SDRAM, включает в себя менеджер памяти [lwmem](https://github.com/MaJerle/lwmem)
-- `libs/ssh` SSH - сервер с поддержкой SFTP на основе [WolfSSL](https://github.com/wolfSSL/wolfssl) и [WolfSSH](https://github.com/wolfSSL/wolfssh)
+- `libs/ssh` SSH - сервер с поддержкой SFTP на основе [WolfSSL](https://github.com/wolfSSL/wolfssl) и [WolfSSH](https://github.com/wolfSSL/wolfssh) (GPLv3, опция `H723_WITH_SSH`)
+- `libs/tls` Функции ввода-вывода wolfSSL для сокетов FreeRTOS+TCP (опция `H723_WITH_TLS`)
 - `libs/term` Терминал разработанный по мотивам [microrl](https://github.com/Helius/microrl)
 - `libs/lua` Интерпретатор скриптового языка [Lua](https://www.lua.org/)
     - `libs/lua/pio` GPIO для Lua. [pio doc](libs/lua/docs/pio.md)
@@ -38,8 +43,8 @@
     - `libs/lua/lthread` Библиотека многопоточности для Lua. [Lua Thread doc](libs/lua/docs/lthread.md)
     - `libs/lua/wifi` Библиотека управления WiFi для Lua. [Lua Thread doc](libs/lua/docs/wifi.md)
     - `libs/lua/rtos` Библиотека для работы с FreeRTOS и системными ресурсами. [Lua RTOS doc](libs/lua/docs/rtos.md)
-    - `libs/lua/luasocket` Библиотека для работы с сокетами. [Luasocket](https://lunarmodules.github.io/luasocket/)
-    - `libs/lua/luasec` Обертка для OpenSSL, обеспечивает работу с HTTPS. [LuaSec](https://github.com/lunarmodules/luasec/wiki)
+    - [LuaSocket](https://lunarmodules.github.io/luasocket/) Библиотека для работы с сокетами (`third_party/luasocket`)
+    - [LuaSec](https://github.com/lunarmodules/luasec/wiki) Обертка для OpenSSL (здесь — wolfSSL), обеспечивает работу с HTTPS (`third_party/luasec`, опция `H723_WITH_TLS`)
 
 ## SSH и SFTP
 
