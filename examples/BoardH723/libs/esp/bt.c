@@ -298,17 +298,30 @@ bool bt_rx_process(uint8_t *data, uint16_t len)
     uint8_t type = data[0];
     uint8_t *ptr = data + 1;
 
+    if (len < 2)
+        return false;
+
+    rc = -1;
     if (type == HCI_H4_ACL)
     {
         struct os_mbuf *om = os_msys_get_pkthdr(len - 1, ACL_DATA_MBUF_LEADINGSPACE);
+        if (om == NULL)
+            return false;
         os_mbuf_append(om, ptr, len - 1);
-        // ble_hci_trans_hs_acl_tx(om);
         rc = ble_transport_to_hs_acl(om);
     }
     else if (type == HCI_H4_EVT)
     {
-        void *evt = ble_transport_alloc_evt(1);
-        memcpy(evt, ptr, len);
+        /* Отбрасывать при нехватке буферов можно только отчёты о рекламе;
+         * Command Complete/Status и остальные события — из основного пула */
+        int discardable = ptr[0] == BLE_HCI_EVCODE_LE_META && len > 3 &&
+                          (ptr[2] == BLE_HCI_LE_SUBEV_ADV_RPT || ptr[2] == BLE_HCI_LE_SUBEV_EXT_ADV_RPT);
+        if (len - 1 > MYNEWT_VAL(BLE_TRANSPORT_EVT_SIZE))
+            return false;
+        void *evt = ble_transport_alloc_evt(discardable);
+        if (evt == NULL)
+            return false;
+        memcpy(evt, ptr, len - 1);
         rc = ble_transport_to_hs_evt(evt);
     }
     return rc == 0;
@@ -324,11 +337,19 @@ int ble_transport_to_ll_cmd_impl(void *data)
     buf.type = ESP_BT;
     buf.len = cmd->length + sizeof(struct ble_hci_cmd) + 1;
     buf.data = (uint8_t *)pvPortMalloc(buf.len);
+    if (buf.data == NULL)
+    {
+        ble_transport_free(data);
+        return BLE_ERR_MEM_CAPACITY;
+    }
     buf.data[0] = HCI_H4_CMD;
     memcpy(&buf.data[1], data, buf.len - 1);
     buf.is_released = true;
     buf.free_data_fn = vPortFree;
     rc = spiDriverWrite(&buf) ? 0 : -1;
+    /* Буфер команды принадлежит транспорту: без возврата в пул хост после
+     * первой команды (HCI Reset) не может отправить следующую и не синхронизируется */
+    ble_transport_free(data);
     return rc;
 }
 
