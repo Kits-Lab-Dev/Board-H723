@@ -6,11 +6,11 @@ target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 target_link_libraries(nimble
     stm32cubemx
     freertos_headers
+    lwmem
 )
 
 target_include_directories(nimble
     PUBLIC
-        ${CMAKE_SOURCE_DIR}/libs/sdram/lwmem/include
         ${CMAKE_SOURCE_DIR}/libs/sdram
         ${CMAKE_SOURCE_DIR}/app
         ${CMAKE_SOURCE_DIR}/libs/esp

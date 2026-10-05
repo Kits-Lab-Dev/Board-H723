@@ -77,7 +77,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     app
     libs/sys/include
     libs/sdram
-    libs/sdram/lwmem/include
     libs/FreeRTOS-Plus-TCP/include
     libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
     libs/dhcp
@@ -105,6 +104,10 @@ target_include_directories(freertos_headers INTERFACE
     ${FREERTOS_DIR}/portable/GCC/ARM_CM4F
 )
 
+# lwmem — менеджер памяти SDRAM
+add_library(lwmem STATIC ${THIRD_PARTY}/lwmem/lwmem/src/lwmem/lwmem.c)
+target_include_directories(lwmem PUBLIC config ${THIRD_PARTY}/lwmem/lwmem/src/include)
+
 add_subdirectory(libs/esp/nimble)  
 add_subdirectory(libs/lua) 
 
@@ -115,7 +118,6 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     app/log.c
     libs/lua/lua_macros.h
     libs/sdram/sdram.c
-    libs/sdram/lwmem/lwmem/lwmem.c
 
     libs/sys/socket.c 
     libs/sys/statvfs.c 
@@ -244,6 +246,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
     freertos_headers
+    lwmem
     nimble 
     luaengine
 ) 
