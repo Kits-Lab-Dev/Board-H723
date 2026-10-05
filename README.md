@@ -27,7 +27,7 @@ git config --global core.longpaths true
 - `third_party/` - Сторонние библиотеки (git submodule, без изменений) и FatFs, см. [THIRD_PARTY.md](THIRD_PARTY.md)
 - `examples/BoardH723/` - Основной проект для Board-H723
   - `app/` - Исходный код приложения
-  - `config/` - Настройки библиотек (FreeRTOSConfig.h, FreeRTOSIPConfig.h, ffconf.h, wolfSSL/wolfSSH и др.)
+  - `config/` - Настройки библиотек (FreeRTOSConfig.h, FreeRTOSIPConfig.h, ffconf.h, Mbed TLS, wolfSSL/wolfSSH и др.)
   - `libs/` - Наши библиотеки (ESP, сеть, SSH, Lua-модули, диски и др.)
   - `cmake/patch_source.cmake` - Точечные правки сторонних файлов при сборке (оригиналы не меняются)
   - `Core/`, `Drivers/` - Сгенерированные файлы STM32CubeMX
@@ -42,11 +42,12 @@ cmake --preset Release
 cmake --build build/Release
 ```
 
-SSH/SFTP-сервер и TLS для Lua построены на wolfSSH и wolfSSL, которые распространяются под **GPLv3**.
-По умолчанию они включены, и прошивка целиком распространяется под GPLv3. Для закрытого проекта их можно выключить:
+SSH/SFTP-сервер построен на wolfSSH и wolfCrypt, которые распространяются под **GPLv3**.
+По умолчанию он включён, и прошивка целиком распространяется под GPLv3. Для закрытого проекта его можно выключить
+(TLS для Lua — на Mbed TLS под Apache-2.0 и остаётся):
 
 ```bash
-cmake --preset Release -DH723_WITH_SSH=OFF -DH723_WITH_TLS=OFF
+cmake --preset Release -DH723_WITH_SSH=OFF
 ```
 
 ### 1. examples/**BoardH723**
@@ -64,7 +65,7 @@ cmake --preset Release -DH723_WITH_SSH=OFF -DH723_WITH_TLS=OFF
 - Интерпретатор Lua с поддержкой:
   - GPIO, Serial, SPI, I2C
   - Многопоточность (LThread)
-  - Сетевые сокеты (Luasocket, LuaSec (для поддержки SSL/TLS))
+  - Сетевые сокеты (LuaSocket) и HTTPS (модуль `ssl` с интерфейсом LuaSec на Mbed TLS)
   - Файловая система (FatFs)
 
 ### 2. examples/**ESP-Loader**

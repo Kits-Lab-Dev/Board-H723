@@ -26,9 +26,10 @@ local _M = {
 }
 
 -- TLS configuration
--- Сертификат сервера пока не проверяется (SSLSetIO в libs/tls/ssl_util.c ставит SSL_VERIFY_NONE).
--- Тестовые клиентские ключи LuaSec (certs/clientA*, rootA) истекли 17.03.2026 и
--- ломали загрузку контекста — для обычных HTTPS-запросов они не нужны.
+-- По умолчанию сертификат сервера не проверяется. Проверка — параметрами запроса:
+--   https.request{url = "https://...", verify = "peer",
+--                 cafile = "/SD/lib/ssl/certs/roots.pem"}
+-- roots.pem — корневые сертификаты популярных сервисов; для других добавьте свой корень.
 local cfg = {
    protocol = "any",
    verify = "none",

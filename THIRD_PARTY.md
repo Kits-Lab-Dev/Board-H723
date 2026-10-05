@@ -3,11 +3,12 @@
 Код KitsLab распространяется под лицензией MIT (см. [LICENSE](LICENSE)).
 Сторонние компоненты сохраняют свои лицензии.
 
-> **GPLv3.** wolfSSL и wolfSSH распространяются под GPLv3 (или коммерческой
-> лицензией wolfSSL Inc.). Прошивка, собранная с опцией `H723_WITH_TLS` или
-> `H723_WITH_SSH` (включены по умолчанию), целиком распространяется под GPLv3.
-> Для закрытого проекта выключите их:
-> `cmake --preset Release -DH723_WITH_SSH=OFF -DH723_WITH_TLS=OFF`.
+> **GPLv3.** SSH/SFTP-сервер построен на wolfSSH и wolfCrypt (часть wolfSSL),
+> они распространяются под GPLv3 (или коммерческой лицензией wolfSSL Inc.).
+> Прошивка, собранная с опцией `H723_WITH_SSH` (включена по умолчанию), целиком
+> распространяется под GPLv3. Для закрытого проекта выключите её:
+> `cmake --preset Release -DH723_WITH_SSH=OFF`. Остальное (в том числе TLS для Lua
+> на Mbed TLS) — под MIT, BSD и Apache-2.0.
 
 ## Подключены как git submodule (`third_party/`)
 
@@ -22,9 +23,9 @@
 | [STM32 USB Device Library](https://github.com/STMicroelectronics/stm32-mw-usb-device) | v2.11.6 | SLA0044 (ST, только для устройств ST) | `third_party/stm32-mw-usb-device` | — |
 | [Lua](https://github.com/lua/lua) | 5.4.9 | MIT | `third_party/lua` | — (настройки в `libs/lua/lua_port.h`) |
 | [LuaSocket](https://github.com/lunarmodules/luasocket) | 3.1.0 | MIT | `third_party/luasocket` | `usocket.c`: неблокирующий `recv` |
-| [LuaSec](https://github.com/lunarmodules/luasec) | 1.3.2 | MIT | `third_party/luasec` | `ssl.c`: свои функции ввода-вывода; `x509.c`: SHA-256 по умолчанию |
 | [NimBLE](https://github.com/apache/mynewt-nimble) | 1.9.0 | Apache-2.0 | `third_party/mynewt-nimble` | `npl_os_freertos.c`: `in_isr()` с учётом PRIMASK |
-| [wolfSSL](https://github.com/wolfSSL/wolfssl) | 5.9.4 | **GPLv3** | `third_party/wolfssl` | — (только при `H723_WITH_TLS`) |
+| [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) | 3.6.7 LTS | Apache-2.0 | `third_party/mbedtls` | — (настройки в `config/mbedtls_board_config.h`) |
+| [wolfSSL](https://github.com/wolfSSL/wolfssl) (только wolfCrypt) | 5.9.4 | **GPLv3** | `third_party/wolfssl` | — (только при `H723_WITH_SSH`) |
 | [wolfSSH](https://github.com/wolfSSL/wolfssh) | 1.5.0 | **GPLv3** | `third_party/wolfssh` | — (только при `H723_WITH_SSH`) |
 
 ## Лежат в репозитории
@@ -41,10 +42,13 @@
 
 Конфиги `config/wolfSSL.I-CUBE-wolfSSL_conf.h` и `config/wolfSSL.I-CUBE-wolfSSH_conf.h`
 созданы пакетами ST I-CUBE-wolfSSL/I-CUBE-wolfSSH, `config/myFilesystem.h` — на
-основе шаблона wolfSSH (GPLv3); используются только с `H723_WITH_TLS`/`H723_WITH_SSH`.
+основе шаблона wolfSSH (GPLv3); используются только с `H723_WITH_SSH`.
 
 Lua-модули на SD-карте (`examples/BoardH723/app/SD/lib`) — из LuaSocket и
-LuaSec (MIT).
+LuaSec 1.3.2 (MIT). C-часть LuaSec заменена своей на Mbed TLS
+(`examples/BoardH723/libs/lua/ssl`), Lua-часть (`ssl.lua`, `ssl/https.lua`) — без изменений,
+кроме комментария о проверке сертификатов. Корневые сертификаты
+`app/SD/lib/ssl/certs/roots.pem` — из набора Mozilla (MPL-2.0).
 
 ## Свой код по мотивам
 

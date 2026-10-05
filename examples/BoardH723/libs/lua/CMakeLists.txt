@@ -118,3 +118,9 @@ target_sources( luaengine
     ${CMAKE_CURRENT_BINARY_DIR}/patched/usocket.c
 
 )
+
+if(H723_WITH_TLS)
+    # Модуль ssl на Mbed TLS с интерфейсом LuaSec (Lua-часть LuaSec — на SD в lib/)
+    target_sources(luaengine PRIVATE ssl/lssl.c)
+    target_link_libraries(luaengine mbedtls)
+endif()

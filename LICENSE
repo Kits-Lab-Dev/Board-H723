@@ -23,6 +23,6 @@ SOFTWARE.
 ---
 
 This license covers code written by KitsLab. Third-party components keep
-their own licenses, see THIRD_PARTY.md. Note that wolfSSL and wolfSSH are
-GPLv3: a firmware built with H723_WITH_TLS or H723_WITH_SSH enabled (the
+their own licenses, see THIRD_PARTY.md. Note that wolfSSH and wolfCrypt
+(wolfSSL) are GPLv3: a firmware built with H723_WITH_SSH enabled (the
 default) is distributed under GPLv3 as a whole.

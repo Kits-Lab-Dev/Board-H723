@@ -33,6 +33,7 @@ option(H723_WITH_SSH "wolfSSH + wolfCrypt (GPLv3): SSH/SFTP-сервер с те
 if(H723_WITH_SSH)
     message(STATUS "ВНИМАНИЕ: включён SSH на wolfSSH (GPLv3) — прошивка распространяется под GPLv3")
 endif()
+option(H723_WITH_TLS "Модуль ssl для Lua (HTTPS) на Mbed TLS (Apache-2.0)" ON)
 
 # Сторонние библиотеки (git submodule): git submodule update --init
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
@@ -40,6 +41,7 @@ set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
 set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
 set(WOLFSSL_DIR ${THIRD_PARTY}/wolfssl)
 set(WOLFSSH_DIR ${THIRD_PARTY}/wolfssh)
+set(MBEDTLS_DIR ${THIRD_PARTY}/mbedtls)
 
 # Core project settings
 project(${CMAKE_PROJECT_NAME}) 
@@ -124,6 +126,7 @@ add_compile_definitions(
     SSH_BUFFER_SIZE=4096
 
     WITH_LUA
+    $<$<BOOL:${H723_WITH_TLS}>:WITH_TLS>
     $<$<BOOL:${H723_WITH_SSH}>:WITH_SSH>
 )
 
@@ -141,6 +144,15 @@ target_include_directories(freertos_headers INTERFACE
 # lwmem — менеджер памяти SDRAM
 add_library(lwmem STATIC ${THIRD_PARTY}/lwmem/lwmem/src/lwmem/lwmem.c)
 target_include_directories(lwmem PUBLIC config ${THIRD_PARTY}/lwmem/lwmem/src/include)
+
+# Mbed TLS (Apache-2.0) — TLS для Lua (libs/lua/ssl) и криптография NimBLE.
+# Настройки — config/mbedtls_board_config.h, порт на плату — libs/tls/tls_port.c.
+file(GLOB MBEDTLS_SOURCES ${MBEDTLS_DIR}/library/*.c)
+add_library(mbedtls OBJECT ${MBEDTLS_SOURCES} libs/tls/tls_port.c)
+target_include_directories(mbedtls PUBLIC ${MBEDTLS_DIR}/include libs/tls config)
+target_compile_definitions(mbedtls PUBLIC MBEDTLS_CONFIG_FILE="mbedtls_board_config.h")
+target_link_libraries(mbedtls PRIVATE board_includes freertos_headers lwmem stm32cubemx)
+target_link_libraries(${CMAKE_PROJECT_NAME} mbedtls)
 
 # wolfSSH и wolfCrypt (GPLv3) — SSH/SFTP-сервер; libs/ssh — наш сервер поверх него.
 # Из wolfSSL берётся только wolfCrypt (WOLFCRYPT_ONLY в config/wolfSSL.I-CUBE-wolfSSL_conf.h).

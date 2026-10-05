@@ -140,7 +140,7 @@
 #define XVALIDATEDATE(d, f,t) (0)
 #define WOLFSSL_USER_CURRTIME /* for benchmark */
 
-#define WOLFSSL_GENSEED_FORTEST /* Warning: define your own seed gen */
+/* seed для RNG — hw_random() из libs/tls/tls_port.c (см. wolfSSL.I-CUBE-wolfSSL_conf.h) */
 
 #define TFM_TIMING_RESISTANT
 #define ECC_TIMING_RESISTANT
