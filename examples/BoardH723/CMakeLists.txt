@@ -85,7 +85,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/disks
     libs/usb/App
     libs/usb/Class
-    libs/usb/Core/Inc
+    ${THIRD_PARTY}/stm32-mw-usb-device/Core/Inc
     libs/usb/Target
     libs/ntp
     libs/term
@@ -197,9 +197,9 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/usb/App/usbd_desc.c
     libs/usb/App/usbd_ncm_if.c
     libs/usb/Class/usbd_ncm.c
-    libs/usb/Core/Src/usbd_core.c
-    libs/usb/Core/Src/usbd_ctlreq.c
-    libs/usb/Core/Src/usbd_ioreq.c
+    ${THIRD_PARTY}/stm32-mw-usb-device/Core/Src/usbd_core.c
+    ${THIRD_PARTY}/stm32-mw-usb-device/Core/Src/usbd_ctlreq.c
+    ${THIRD_PARTY}/stm32-mw-usb-device/Core/Src/usbd_ioreq.c
     libs/usb/Target/usbd_conf.c
 
     libs/ntp/ntpclient.c

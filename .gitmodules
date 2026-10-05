@@ -4,3 +4,6 @@
 [submodule "third_party/lwmem"]
 	path = third_party/lwmem
 	url = https://github.com/MaJerle/lwmem.git
+[submodule "third_party/stm32-mw-usb-device"]
+	path = third_party/stm32-mw-usb-device
+	url = https://github.com/STMicroelectronics/stm32-mw-usb-device.git

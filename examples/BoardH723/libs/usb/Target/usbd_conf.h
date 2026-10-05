@@ -34,6 +34,10 @@
 #include "stm32h7xx.h"
 #include "stm32h7xx_hal.h"
 
+/* NCM использует свои строковые дескрипторы (iMACAddress) */
+#define USBD_SUPPORT_USER_STRING_DESC 1U
+#define USBD_CLASS_USER_STRING_DESC   1U
+
 /* USER CODE BEGIN INCLUDE */
 
 /* USER CODE END INCLUDE */
