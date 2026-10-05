@@ -35,6 +35,8 @@ static void UART_TransmitCompleteCallback(UART_HandleTypeDef *huart)
 static int lw(char *str, int len)
 {
 #if defined(LOG_UART)
+    if (uartBufDMA == NULL) /* до logInit() */
+        return len;
 
     uint32_t l = len;
     char *p = str;
@@ -45,7 +47,8 @@ static int lw(char *str, int len)
         l -= lp;
         p += lp;
         HAL_UART_RegisterCallback(huart, HAL_UART_TX_COMPLETE_CB_ID, UART_TransmitCompleteCallback);
-        HAL_UART_Transmit_DMA(huart, uartBufDMA, lp);
+        if (HAL_UART_Transmit_DMA(huart, uartBufDMA, lp) != HAL_OK)
+            return -1;
         if (uartTxSemaphore)
         {
             if (xSemaphoreTake(uartTxSemaphore, 100) == pdTRUE)
@@ -79,9 +82,22 @@ void logDeinit(void)
 int _write(int file, char *ptr, int len)
 {
     (void)file;
+    if (len <= 0)
+        return 0;
+#if defined(LOG_UART)
+    /* Один DMA-буфер на все задачи: без мьютекса они перебивали друг друга и строки терялись */
+    bool locked = uartMutex != NULL && xTaskGetSchedulerState() == taskSCHEDULER_RUNNING &&
+                  !xPortIsInsideInterrupt();
+    if (locked)
+        xSemaphoreTake(uartMutex, portMAX_DELAY);
+#endif
     lw(ptr, len);
     if (ptr[len - 1] == '\n')
         lw("\r", 1);
+#if defined(LOG_UART)
+    if (locked)
+        xSemaphoreGive(uartMutex);
+#endif
     return len;
 }
 
@@ -125,16 +141,16 @@ void mcuDebug(DebugLevel level, char *msg, ...)
         xMutexGive(printMutex);
         return;
     case DEBUG_LEVEL_ERROR:
-        _write(0, "\033[31m", 6);
+        _write(0, "\033[31m", 5);
         break;
     case DEBUG_LEVEL_WARNING:
-        _write(0, "\033[33m", 6);
+        _write(0, "\033[33m", 5);
         break;
     case DEBUG_LEVEL_INFO:
-        _write(0, "\033[32m", 6);
+        _write(0, "\033[32m", 5);
         break;
     case DEBUG_LEVEL_DEBUG:
-        _write(0, "\033[35m", 6);
+        _write(0, "\033[35m", 5);
         break;
     default:
         xMutexGive(printMutex);
@@ -151,7 +167,7 @@ void mcuDebug(DebugLevel level, char *msg, ...)
     {
         _write(0, printBuf, strlen(printBuf));
     }
-    _write(0, "\033[0m", 5);
+    _write(0, "\033[0m", 4);
     // _write(0, "\r\n", 2);
     xMutexGive(printMutex);
 }
