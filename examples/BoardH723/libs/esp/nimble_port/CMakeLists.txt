@@ -12,10 +12,12 @@ set(NIMBLE_STACK ${NIMBLE_DIR}/nimble)
 set(NIMBLE_PORTING ${NIMBLE_DIR}/porting)
 set(NIMBLE_SERVICES ans bas dis gap gatt ias ipss lls tps)
 
+# Криптография BLE Secure Connections (AES, AES-CMAC, ECDH P-256) — Mbed TLS
 target_link_libraries(nimble
     stm32cubemx
     freertos_headers
     lwmem
+    mbedtls
 )
 
 target_include_directories(nimble
@@ -34,7 +36,6 @@ target_include_directories(nimble
         ${NIMBLE_STACK}/transport/include
         ${NIMBLE_STACK}/transport/common/hci_h4/include
         ${NIMBLE_STACK}/transport/common/hci_ipc/include
-        ${NIMBLE_DIR}/ext/tinycrypt/include
         ${NIMBLE_STACK}/drivers/native/include
         ${NIMBLE_STACK}/controller/include
         ${NIMBLE_STACK}/host/include
@@ -64,7 +65,6 @@ list(FILTER NIMBLE_PORTING_SOURCES EXCLUDE REGEX "/(hal_timer|npl_os_freertos)\\
 
 file(GLOB NIMBLE_STACK_SOURCES
     ${NIMBLE_STACK}/drivers/native/src/*.c
-    ${NIMBLE_DIR}/ext/tinycrypt/src/*.c
     ${NIMBLE_STACK}/host/src/*.c
     ${NIMBLE_STACK}/transport/src/*.c
     ${NIMBLE_STACK}/transport/common/hci_h4/src/*.c

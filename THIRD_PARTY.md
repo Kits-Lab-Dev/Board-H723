@@ -23,8 +23,8 @@
 | [STM32 USB Device Library](https://github.com/STMicroelectronics/stm32-mw-usb-device) | v2.11.6 | SLA0044 (ST, только для устройств ST) | `third_party/stm32-mw-usb-device` | — |
 | [Lua](https://github.com/lua/lua) | 5.4.9 | MIT | `third_party/lua` | — (настройки в `libs/lua/lua_port.h`) |
 | [LuaSocket](https://github.com/lunarmodules/luasocket) | 3.1.0 | MIT | `third_party/luasocket` | `usocket.c`: неблокирующий `recv` |
-| [NimBLE](https://github.com/apache/mynewt-nimble) | 1.9.0 | Apache-2.0 | `third_party/mynewt-nimble` | `npl_os_freertos.c`: `in_isr()` с учётом PRIMASK |
-| [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) | 3.6.7 LTS | Apache-2.0 | `third_party/mbedtls` | — (настройки в `config/mbedtls_board_config.h`) |
+| [NimBLE](https://github.com/apache/mynewt-nimble) | 1.10.0 | Apache-2.0 | `third_party/mynewt-nimble` | `npl_os_freertos.c`: `in_isr()` с учётом PRIMASK |
+| [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) | 3.6.7 LTS | Apache-2.0 | `third_party/mbedtls` | — (настройки в `config/mbedtls_board_config.h`; TLS для Lua и криптография NimBLE) |
 | [wolfSSL](https://github.com/wolfSSL/wolfssl) (только wolfCrypt) | 5.9.4 | **GPLv3** | `third_party/wolfssl` | — (только при `H723_WITH_SSH`) |
 | [wolfSSH](https://github.com/wolfSSL/wolfssh) | 1.5.0 | **GPLv3** | `third_party/wolfssh` | — (только при `H723_WITH_SSH`) |
 
