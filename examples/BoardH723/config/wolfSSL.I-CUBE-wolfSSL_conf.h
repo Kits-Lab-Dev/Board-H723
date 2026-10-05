@@ -31,14 +31,16 @@ extern "C"
     MiddleWare fileName : wolfSSL.I-CUBE-wolfSSL_conf.h
     MiddleWare version :
 */
+/* Собирается только wolfCrypt — криптография для wolfSSH. TLS-часть wolfSSL
+ * и слой совместимости с OpenSSL не нужны: TLS для Lua сделан на Mbed TLS. */
 /*---------- WOLF_CONF_DEBUG -----------*/
 #define WOLF_CONF_DEBUG 0
 
 /*---------- WOLF_CONF_WOLFCRYPT_ONLY -----------*/
-#define WOLF_CONF_WOLFCRYPT_ONLY 0
+#define WOLF_CONF_WOLFCRYPT_ONLY 1
 
 /*---------- WOLF_CONF_TLS13 -----------*/
-#define WOLF_CONF_TLS13 1
+#define WOLF_CONF_TLS13 0
 
 /*---------- WOLF_CONF_TLS12 -----------*/
 #define WOLF_CONF_TLS12 1
@@ -98,7 +100,7 @@ extern "C"
 #define WOLF_CONF_SHA3 0
 
 /*---------- WOLF_CONF_PSK -----------*/
-#define WOLF_CONF_PSK 1
+#define WOLF_CONF_PSK 0
 
 /*---------- WOLF_CONF_PWDBASED -----------*/
 #define WOLF_CONF_PWDBASED 1
@@ -110,10 +112,10 @@ extern "C"
 #define WOLF_CONF_BASE64_ENCODE 0
 
 /*---------- WOLF_CONF_OPENSSL_EXTRA -----------*/
-#define WOLF_CONF_OPENSSL_EXTRA 2
+#define WOLF_CONF_OPENSSL_EXTRA 0
 
 /*---------- WOLF_CONF_TEST -----------*/
-#define WOLF_CONF_TEST 1
+#define WOLF_CONF_TEST 0
 
 /*---------- WOLF_CONF_PQM4 -----------*/
 #define WOLF_CONF_PQM4 0
@@ -212,36 +214,10 @@ extern "C"
 #define WOLFSSL_STM32H7
 #define WOLFSSL_WOLFSSH
 #define WOLFSSL_AES_COUNTER
-
-#define X509_TRUST_SSL_SERVER (X509_PURPOSE_SSL_SERVER + 1)
-#define SSL_X509_LOOKUP   4
-#define HAVE_ALPN
-#define HAVE_KEYING_MATERIAL
-#define SESSION_CERTS
-#define WOLFSSL_ALLOW_TLSV10
 #define WOLFSSL_CERT_GEN
-
-#define X509_VERIFY_PARAM_set_purpose X509_VERIFY_PARAM_set1
-#define X509_VERIFY_PARAM_set_trust X509_VERIFY_PARAM_set1
-
-#define MAX_X509_SIZE (8*1024)
-// #define WOLFSSL_CERT_REQ
-// #define WOLFSSL_ALT_CERT_CHAINS
 
 #include "FreeRTOS.h"
 #define XTIME_MS(x) xTaskGetTickCount()
-
-/* С wolfSSL 5.9 x509.c использует WOLFSSL_IP4/6 и при WOLFSSL_NO_SOCK */
-#define WOLFSSL_IP4 2  /* AF_INET */
-#define WOLFSSL_IP6 10 /* AF_INET6 */
-
-
-
-// #define WOLFSSL_QUIC
-/* С wolfSSL 5.9 от глубины зависит и предел размера сообщения Certificate (MAX_CERTIFICATE_SZ):
- * при 2 цепочка из 3 сертификатов (обычная для Cloudflare и др.) даёт HANDSHAKE_SIZE_ERROR */
-#define MAX_CHAIN_DEPTH 4
-#define SESSION_CACHE_DYNAMIC_MEM
 
 // #define XMALLOC_USER
 
@@ -348,15 +324,6 @@ extern "C"
 /* ------------------------------------------------------------------------- */
 /* Enable Features */
 /* ------------------------------------------------------------------------- */
-/* Required for TLS */
-#define HAVE_TLS_EXTENSIONS
-#define HAVE_SUPPORTED_CURVES
-#define HAVE_ENCRYPT_THEN_MAC
-#define HAVE_EXTENDED_MASTER
-/* SNI: без него CDN (Cloudflare и др.) рвут соединение сразу после ClientHello;
- * luasec передаёт имя хоста через SSL_set_tlsext_host_name */
-#define HAVE_SNI
-
 #if defined(WOLF_CONF_TLS13) && WOLF_CONF_TLS13 == 1
 #define WOLFSSL_TLS13
 #define HAVE_HKDF
@@ -387,15 +354,8 @@ extern "C"
 #include <sys/time.h>
 #endif
 
-/* PKCS#12 не используют ни luasec, ни SSH — экономит Flash */
+/* PKCS#12 SSH не использует — экономит Flash */
 #define NO_PKCS12
-
-/* TLS Session Cache */
-#if 1
-#define SMALL_SESSION_CACHE
-#else
-#define NO_SESSION_CACHE
-#endif
 
 /* Post Quantum
  * Note: PQM4 is compatible with STM32. The project can be found at:

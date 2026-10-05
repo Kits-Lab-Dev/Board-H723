@@ -26,16 +26,12 @@ include("BoardH723.cmake")
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Модули под GPLv3. Если хотя бы один включён, прошивка целиком
-# распространяется под GPLv3 (см. LICENSE и THIRD_PARTY.md в корне репозитория).
-# Для закрытого проекта выключите их: cmake --preset Release -DH723_WITH_SSH=OFF -DH723_WITH_TLS=OFF
-option(H723_WITH_TLS "wolfSSL (GPLv3): TLS для Lua (luasec) и криптография для SSH" ON)
-option(H723_WITH_SSH "wolfSSH (GPLv3): SSH/SFTP-сервер с терминалом" ON)
-if(H723_WITH_SSH AND NOT H723_WITH_TLS)
-    message(FATAL_ERROR "H723_WITH_SSH требует H723_WITH_TLS (wolfSSH использует wolfCrypt)")
-endif()
-if(H723_WITH_TLS OR H723_WITH_SSH)
-    message(STATUS "ВНИМАНИЕ: включены модули под GPLv3 (TLS=${H723_WITH_TLS}, SSH=${H723_WITH_SSH}) — прошивка распространяется под GPLv3")
+# SSH/SFTP-сервер построен на wolfSSH и wolfCrypt (GPLv3). Если он включён,
+# прошивка целиком распространяется под GPLv3 (см. LICENSE и THIRD_PARTY.md в корне репозитория).
+# Для закрытого проекта выключите его: cmake --preset Release -DH723_WITH_SSH=OFF
+option(H723_WITH_SSH "wolfSSH + wolfCrypt (GPLv3): SSH/SFTP-сервер с терминалом" ON)
+if(H723_WITH_SSH)
+    message(STATUS "ВНИМАНИЕ: включён SSH на wolfSSH (GPLv3) — прошивка распространяется под GPLv3")
 endif()
 
 # Сторонние библиотеки (git submodule): git submodule update --init
@@ -128,7 +124,6 @@ add_compile_definitions(
     SSH_BUFFER_SIZE=4096
 
     WITH_LUA
-    $<$<BOOL:${H723_WITH_TLS}>:WITH_TLS>
     $<$<BOOL:${H723_WITH_SSH}>:WITH_SSH>
 )
 
@@ -147,16 +142,14 @@ target_include_directories(freertos_headers INTERFACE
 add_library(lwmem STATIC ${THIRD_PARTY}/lwmem/lwmem/src/lwmem/lwmem.c)
 target_include_directories(lwmem PUBLIC config ${THIRD_PARTY}/lwmem/lwmem/src/include)
 
-# wolfSSL (GPLv3) — TLS и криптография для SSH и luasec
-if(H723_WITH_TLS)
-    file(GLOB WOLFSSL_SOURCES ${WOLFSSL_DIR}/src/*.c ${WOLFSSL_DIR}/wolfcrypt/src/*.c)
-    add_library(wolfssl OBJECT ${WOLFSSL_SOURCES} libs/tls/ssl_util.c)
-    target_link_libraries(wolfssl PRIVATE board_includes freertos_headers lwmem stm32cubemx)
-    target_link_libraries(${CMAKE_PROJECT_NAME} wolfssl)
-endif()
-
-# wolfSSH (GPLv3) — SSH/SFTP-сервер; libs/ssh — наш сервер поверх него
+# wolfSSH и wolfCrypt (GPLv3) — SSH/SFTP-сервер; libs/ssh — наш сервер поверх него.
+# Из wolfSSL берётся только wolfCrypt (WOLFCRYPT_ONLY в config/wolfSSL.I-CUBE-wolfSSL_conf.h).
 if(H723_WITH_SSH)
+    file(GLOB WOLFCRYPT_SOURCES ${WOLFSSL_DIR}/wolfcrypt/src/*.c)
+    add_library(wolfcrypt OBJECT ${WOLFCRYPT_SOURCES})
+    target_link_libraries(wolfcrypt PRIVATE board_includes freertos_headers lwmem stm32cubemx)
+    target_link_libraries(${CMAKE_PROJECT_NAME} wolfcrypt)
+
     file(GLOB WOLFSSH_SOURCES ${WOLFSSH_DIR}/src/*.c)
     add_library(wolfssh OBJECT ${WOLFSSH_SOURCES})
     target_link_libraries(wolfssh PRIVATE board_includes freertos_headers lwmem stm32cubemx)
