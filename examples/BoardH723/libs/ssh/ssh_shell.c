@@ -180,7 +180,33 @@ static int execute(term_t *trm, int argc, const char *const *argv)
     {
         DIR *dir;
         struct dirent *entry;
-        const char *path = argc > 1 ? argv[1] : trm->cwd;
+        const char *path = trm->cwd;
+        int longFormat = 0;
+        for (int i = 1; i < argc; i++)
+        {
+            if (strcmp(argv[i], "-l") == 0)
+                longFormat = 1;
+            else
+                path = argv[i];
+        }
+        /* Относительный путь — от текущего каталога; "/SD" и "/SD/" — одно и то же */
+        char dirpath[256];
+        if (path[0] != '/')
+        {
+            size_t clen = strlen(trm->cwd);
+            snprintf(dirpath, sizeof(dirpath), "%s%s%s", trm->cwd,
+                     clen && trm->cwd[clen - 1] == '/' ? "" : "/", path);
+            path = dirpath;
+        }
+        size_t plen = strlen(path);
+        if (plen > 1 && path[plen - 1] != '/' && plen + 1 < sizeof(dirpath))
+        {
+            if (path != dirpath)
+                snprintf(dirpath, sizeof(dirpath), "%s/", path);
+            else
+                strcat(dirpath, "/");
+            path = dirpath;
+        }
 
         dir = opendir(path);
         if (dir)
@@ -189,14 +215,21 @@ static int execute(term_t *trm, int argc, const char *const *argv)
             {
                 struct stat st;
                 char fullpath[512];
-                if (strcmp(path, "/") == 0)
-                    snprintf(fullpath, sizeof(fullpath), "/%s", entry->d_name);
-                else
-                    snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
+                snprintf(fullpath, sizeof(fullpath), "%s%s%s", path,
+                         path[strlen(path) - 1] == '/' ? "" : "/", entry->d_name);
 
                 if (stat(fullpath, &st) == 0)
                 {
-                    if (S_ISDIR(st.st_mode))
+                    if (longFormat)
+                    {
+                        char line[48];
+                        snprintf(line, sizeof(line), "%c %10lu  ", S_ISDIR(st.st_mode) ? 'd' : '-',
+                                 (unsigned long)st.st_size);
+                        trm->output(trm, line);
+                        trm->output(trm, entry->d_name);
+                        trm->output(trm, S_ISDIR(st.st_mode) ? "/\r\n" : "\r\n");
+                    }
+                    else if (S_ISDIR(st.st_mode))
                     {
                         trm->output(trm, "\033[1;34m"); // Синий для директорий
                         trm->output(trm, entry->d_name);
