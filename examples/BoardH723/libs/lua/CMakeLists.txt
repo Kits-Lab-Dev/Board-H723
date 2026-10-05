@@ -17,24 +17,7 @@ patch_source(${LUASOCKET_DIR}/src/usocket.c ${CMAKE_CURRENT_BINARY_DIR}/patched/
     FIND "long taken = (long) recv(*ps, data, count, 0);"
     REPLACE "long taken = (long) recv(*ps, data, count, FREERTOS_MSG_DONTWAIT);")
 
-# LuaSec — third_party/luasec, работает поверх совместимого с OpenSSL API wolfSSL.
-set(LUASEC_DIR ${CMAKE_SOURCE_DIR}/../../third_party/luasec)
-set(LUASEC_PATCHED ${CMAKE_CURRENT_BINARY_DIR}/luasec)
-# wolfSSL реализует API OpenSSL 1.1, но OPENSSL_VERSION_NUMBER у него меньше
-target_compile_definitions(luaengine PRIVATE LSEC_API_OPENSSL_1_1_0)
-# Заголовки рядом с правлеными копиями, чтобы "ssl.h" не взялся из wolfssl/
-file(GLOB LUASEC_HEADERS ${LUASEC_DIR}/src/*.h)
-file(COPY ${LUASEC_HEADERS} DESTINATION ${LUASEC_PATCHED})
-# Свои функции ввода-вывода для TLS-сокета (libs/tls/ssl_util.c)
-patch_source(${LUASEC_DIR}/src/ssl.c ${LUASEC_PATCHED}/ssl.c
-    FIND "    SSL_set_connect_state(ssl->ssl);\n"
-    REPLACE "    SSL_set_connect_state(ssl->ssl);\n  { extern void SSLSetIO(void *ssl); SSLSetIO(ssl->ssl); }\n")
-# SHA-1 в wolfSSL отключён (NO_SHA): дайджест по умолчанию — SHA-256
-patch_source(${LUASEC_DIR}/src/x509.c ${LUASEC_PATCHED}/x509.c
-    FIND "if (!str)\n    digest = EVP_sha1();"
-    REPLACE "if (!str)\n    digest = EVP_sha256();"
-    FIND "if (!strcmp(str, \"sha1\"))\n      digest = EVP_sha1();\n    else if"
-    REPLACE "if")
+# LuaSec — см. ниже (только при H723_WITH_TLS)
 
 target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
 target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
@@ -62,7 +45,6 @@ target_include_directories(luaengine
         ${LUA_DIR}
         luajson
         lfs
-        ${LUASEC_PATCHED}
         lsocket
         ${LUASOCKET_DIR}/src
         ${LUASOCKET_INCLUDE}
@@ -139,10 +121,34 @@ target_sources( luaengine
     ${LUASOCKET_DIR}/src/unixstream.c
     ${CMAKE_CURRENT_BINARY_DIR}/patched/usocket.c
 
-    ${LUASEC_DIR}/src/config.c
-    ${LUASEC_DIR}/src/context.c
-    ${LUASEC_DIR}/src/ec.c
-    ${LUASEC_DIR}/src/options.c
-    ${LUASEC_PATCHED}/ssl.c
-    ${LUASEC_PATCHED}/x509.c
 )
+
+if(H723_WITH_TLS)
+    # LuaSec — third_party/luasec, работает поверх совместимого с OpenSSL API wolfSSL.
+    set(LUASEC_DIR ${CMAKE_SOURCE_DIR}/../../third_party/luasec)
+    set(LUASEC_PATCHED ${CMAKE_CURRENT_BINARY_DIR}/luasec)
+    # wolfSSL реализует API OpenSSL 1.1, но OPENSSL_VERSION_NUMBER у него меньше
+    target_compile_definitions(luaengine PRIVATE LSEC_API_OPENSSL_1_1_0)
+    # Заголовки рядом с правлеными копиями, чтобы "ssl.h" не взялся из wolfssl/
+    file(GLOB LUASEC_HEADERS ${LUASEC_DIR}/src/*.h)
+    file(COPY ${LUASEC_HEADERS} DESTINATION ${LUASEC_PATCHED})
+    # Свои функции ввода-вывода для TLS-сокета (libs/tls/ssl_util.c)
+    patch_source(${LUASEC_DIR}/src/ssl.c ${LUASEC_PATCHED}/ssl.c
+        FIND "    SSL_set_connect_state(ssl->ssl);\n"
+        REPLACE "    SSL_set_connect_state(ssl->ssl);\n  { extern void SSLSetIO(void *ssl); SSLSetIO(ssl->ssl); }\n")
+    # SHA-1 в wolfSSL отключён (NO_SHA): дайджест по умолчанию — SHA-256
+    patch_source(${LUASEC_DIR}/src/x509.c ${LUASEC_PATCHED}/x509.c
+        FIND "if (!str)\n    digest = EVP_sha1();"
+        REPLACE "if (!str)\n    digest = EVP_sha256();"
+        FIND "if (!strcmp(str, \"sha1\"))\n      digest = EVP_sha1();\n    else if"
+        REPLACE "if")
+    target_include_directories(luaengine PRIVATE ${LUASEC_PATCHED})
+    target_sources(luaengine PRIVATE
+        ${LUASEC_DIR}/src/config.c
+        ${LUASEC_DIR}/src/context.c
+        ${LUASEC_DIR}/src/ec.c
+        ${LUASEC_DIR}/src/options.c
+        ${LUASEC_PATCHED}/ssl.c
+        ${LUASEC_PATCHED}/x509.c
+    )
+endif()

@@ -16,7 +16,9 @@
 #include "bt.h"
 #include <sddisk.h>
 #include "dhcpserver.h"
+#ifdef WITH_SSH
 #include "ssh_server.h"
+#endif
 #include "rng.h"
 #include "ntpclient.h"
 
@@ -171,7 +173,9 @@ void appTask(void *)
     xTaskCreateStatic(luaTask, "luaTask", LUA_TASK_STACK_SIZE, NULL, LUA_TASK_PRIORITY, luaTaskStack, &luaTaskBuffer);
 #endif
 
+#ifdef WITH_SSH
     SSHServerStart();
+#endif
 
     startNTPTask();
     

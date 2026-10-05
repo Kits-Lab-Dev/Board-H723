@@ -63,10 +63,12 @@ int luaopen_i2c(lua_State *L);
 int luaopen_spi(lua_State *L);
 int luaopen_can(lua_State *L);
 
+#ifdef WITH_TLS
 int luaopen_ssl_core(lua_State *L);
 int luaopen_ssl_context(lua_State *L);
 int luaopen_ssl_x509(lua_State *L);
 int luaopen_ssl_config(lua_State *L);
+#endif
 
 int luaopen_mime_core(lua_State *L);
 
@@ -106,10 +108,12 @@ static const luaL_Reg loadedlibs[] = {
     {LUA_I2C, luaopen_i2c},
     {LUA_SPI, luaopen_spi},
     {LUA_CAN, luaopen_can},
+#ifdef WITH_TLS
     {LUA_SSL, luaopen_ssl_core},
     {LUA_SSL_CONTEXT, luaopen_ssl_context},
     {LUA_SSL_x509, luaopen_ssl_x509},
     {LUA_SSL_CONGIG, luaopen_ssl_config},
+#endif
 
     {NULL, NULL}};
 
