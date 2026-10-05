@@ -81,7 +81,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     libs/FreeRTOS-Plus-TCP/portable/NetworkInterface/include
     libs/dhcp
     libs/esp
-    libs/FatFs
+    ${THIRD_PARTY}/fatfs/source
     libs/disks
     libs/usb/App
     libs/usb/Class
@@ -190,8 +190,8 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/disks/sddisk.c
     libs/disks/wrappers.c
 
-    libs/FatFs/ff.c
-    libs/FatFs/ffunicode.c
+    ${THIRD_PARTY}/fatfs/source/ff.c
+    ${THIRD_PARTY}/fatfs/source/ffunicode.c
 
     libs/usb/App/usb_device.c
     libs/usb/App/usbd_desc.c

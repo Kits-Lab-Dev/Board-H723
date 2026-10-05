@@ -20,7 +20,8 @@ target_include_directories(luaengine
         ${CMAKE_SOURCE_DIR}/libs/wolfSSL
         ${CMAKE_SOURCE_DIR}/libs/wolfSSL/wolfssl
         ${CMAKE_SOURCE_DIR}/libs/esp
-        ${CMAKE_SOURCE_DIR}/libs/FatFs
+        ${CMAKE_SOURCE_DIR}/../../third_party/fatfs/source
+        ${CMAKE_SOURCE_DIR}/config
         ${CMAKE_SOURCE_DIR}/libs/term
         ${CMAKE_SOURCE_DIR}/libs/disks
         ${CMAKE_SOURCE_DIR}/libs/lua

@@ -26,7 +26,8 @@ static bool isMounted = false;
 static uint8_t wblock[SD_DEFAULT_BLOCK_SIZE] __attribute__((section(".spi_buf_section")));
 static uint8_t rblock[SD_DEFAULT_BLOCK_SIZE] __attribute__((section(".spi_buf_section")));
 
-FATFS sdfs __attribute__((section(".spi_buf_section")));
+// DMA работает только с rblock/wblock, поэтому FATFS может лежать в обычной памяти
+FATFS sdfs;
 
 #define ENABLE_SD_DMA_CACHE_MAINTENANCE 1
 
