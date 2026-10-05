@@ -4,6 +4,19 @@ add_library(luaengine OBJECT)
 set(LUA_DIR ${CMAKE_SOURCE_DIR}/../../third_party/lua)
 target_compile_options(luaengine PRIVATE "SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/lua_port.h")
 
+# LuaSocket — third_party/luasocket без изменений.
+set(LUASOCKET_DIR ${CMAKE_SOURCE_DIR}/../../third_party/luasocket)
+# luasec подключает заголовки как <luasocket/xxx.h>
+set(LUASOCKET_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/luasocket_include)
+file(GLOB LUASOCKET_HEADERS ${LUASOCKET_DIR}/src/*.h)
+file(COPY ${LUASOCKET_HEADERS} DESTINATION ${LUASOCKET_INCLUDE}/luasocket)
+# Неблокирующий recv: наш POSIX-слой (libs/sys) пока не поддерживает
+# fcntl(O_NONBLOCK), поэтому флаг передаётся прямо в recv.
+include(${CMAKE_SOURCE_DIR}/cmake/patch_source.cmake)
+patch_source(${LUASOCKET_DIR}/src/usocket.c ${CMAKE_CURRENT_BINARY_DIR}/patched/usocket.c
+    FIND "long taken = (long) recv(*ps, data, count, 0);"
+    REPLACE "long taken = (long) recv(*ps, data, count, FREERTOS_MSG_DONTWAIT);")
+
 target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
 target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
 
@@ -32,7 +45,8 @@ target_include_directories(luaengine
         lfs
         luasec
         lsocket
-        luasocket
+        ${LUASOCKET_DIR}/src
+        ${LUASOCKET_INCLUDE}
 )
 
 target_sources( luaengine
@@ -53,24 +67,6 @@ target_sources( luaengine
     luasec/options.c
     luasec/ssl.c
     luasec/x509.c
-    luasocket/auxiliar.c
-    luasocket/buffer.c
-    luasocket/compat.c
-    luasocket/except.c
-    luasocket/inet.c
-    luasocket/io.c
-    luasocket/luasocket.c
-    luasocket/mime.c
-    luasocket/options.c
-    luasocket/select.c
-    luasocket/serial.c
-    luasocket/tcp.c
-    luasocket/timeout.c
-    luasocket/udp.c
-    luasocket/unix.c
-    luasocket/unixdgram.c
-    luasocket/unixstream.c
-    luasocket/usocket.c
     pio/pio.c
     rtos/rtos.c 
     serial/serial.c
@@ -110,4 +106,23 @@ target_sources( luaengine
     ${LUA_DIR}/lutf8lib.c
     ${LUA_DIR}/lvm.c
     ${LUA_DIR}/lzio.c
+
+    ${LUASOCKET_DIR}/src/auxiliar.c
+    ${LUASOCKET_DIR}/src/buffer.c
+    ${LUASOCKET_DIR}/src/compat.c
+    ${LUASOCKET_DIR}/src/except.c
+    ${LUASOCKET_DIR}/src/inet.c
+    ${LUASOCKET_DIR}/src/io.c
+    ${LUASOCKET_DIR}/src/luasocket.c
+    ${LUASOCKET_DIR}/src/mime.c
+    ${LUASOCKET_DIR}/src/options.c
+    ${LUASOCKET_DIR}/src/select.c
+    ${LUASOCKET_DIR}/src/serial.c
+    ${LUASOCKET_DIR}/src/tcp.c
+    ${LUASOCKET_DIR}/src/timeout.c
+    ${LUASOCKET_DIR}/src/udp.c
+    ${LUASOCKET_DIR}/src/unix.c
+    ${LUASOCKET_DIR}/src/unixdgram.c
+    ${LUASOCKET_DIR}/src/unixstream.c
+    ${CMAKE_CURRENT_BINARY_DIR}/patched/usocket.c
 )
