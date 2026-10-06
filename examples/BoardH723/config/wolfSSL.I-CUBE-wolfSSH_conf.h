@@ -62,7 +62,12 @@
 #include "sys/errno.h"
 #include "dirent.h"
 #include "time.h"
-// #define XGMTIME(c, t)   gmtime((c))
+/* wolfsftp.c вызывает XGMTIME(c, &указатель) и ждёт результат как от gmtime(),
+ * а wolfSSL по умолчанию определяет его как gmtime_r(c, буфер) — на GCC 14 это ошибка */
+#ifdef XGMTIME
+#undef XGMTIME
+#endif
+#define XGMTIME(c, t) gmtime((c))
 
 // #define WMALLOC_USER
 

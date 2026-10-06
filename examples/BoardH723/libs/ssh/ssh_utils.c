@@ -98,26 +98,13 @@ static void ssh_LoggingCb(enum wolfSSH_LogLevel level, const char *msg)
     }
 }
 
-static void ssl_LoggingCb(enum wolfSSH_LogLevel level, const char *msg)
+/* уровни wolfSSL: ERROR_LOG = 0, остальное — трассировка */
+static void ssl_LoggingCb(const int level, const char *msg)
 {
-    switch (level)
-    {
-    case WS_LOG_DEBUG:
-        DBG("ssl: %s\r\n", msg);
-        break;
-    case WS_LOG_ERROR:
+    if (level == 0)
         ERR("ssl: %s\r\n", msg);
-        break;
-    case WS_LOG_WARN:
-        WRN("ssl: %s\r\n", msg);
-        break;
-    case WS_LOG_INFO:
-        INF("ssl: %s\r\n", msg);
-        break;
-    default:
-        WRN("ssl: %s\r\n", msg);
-        break;
-    }
+    else
+        DBG("ssl: %s\r\n", msg);
 }
 
 StrList *StrListAdd(StrList *list, const char *str)

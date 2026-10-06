@@ -103,8 +103,8 @@ LUA_LIB_FUNC static int l_send(lua_State *L)
     }
     else
     {
-        size_t len = luaL_checkinteger(L, 2);
         luaL_checktype(L, 2, LUA_TTABLE);
+        size_t len = lua_rawlen(L, 2);
 
         char *data = (char *)sdramMalloc(len);
         for (size_t i = 0; i < len; ++i)
@@ -188,7 +188,7 @@ LUA_LIB_FUNC static int l_sendto(lua_State *L)
     if (lua_type(L, 2) == LUA_TSTRING)
     {
         const char *str = luaL_checkstring(L, 2);
-        sent = (sock, str, strlen(str), 0, &address, sizeof(address));
+        sent = sendto(sock, str, strlen(str), 0, &address, sizeof(address));
     }
     else
     {
@@ -232,7 +232,7 @@ LUA_LIB_FUNC static int l_close(lua_State *L)
 
 LUA_LIB_FUNC static int l_localIP(lua_State *L)
 {
-    Socket_t sock = (Socket_t)luaL_checkinteger(L, 1);
+    Socket_t sock = (Socket_t)(intptr_t)luaL_checkinteger(L, 1);
     const char *separator = ".";
     if (lua_gettop(L) > 1)
     {

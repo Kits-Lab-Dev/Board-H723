@@ -317,6 +317,7 @@ bool wifiGetSoftAPConfig(wifiSoftAPConfig *rec);
 bool wifiStartSoftAP(wifiSoftAPConfig *cfg);
 uint32_t wifiGetConnectedStaList(wifiConnectedStantion *rec);
 bool wifiStopSoftAP();
+bool wifiIsConnected();
 bool wifiSetPowerSaveMode(wifiPowerSaveMode mode);
 bool wifiGetPowerSaveMode(wifiPowerSaveMode *mode);
 bool wifiSetMaxTxPower(int8_t power);

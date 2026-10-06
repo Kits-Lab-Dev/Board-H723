@@ -265,7 +265,7 @@ static void NTPTask(void *arg)
 
                 if (xReturned < sizeof(xNTPPacket))
                 {
-                    INF(("FreeRTOS_recvfrom: returns %ld\n", xReturned));
+                    INF("FreeRTOS_recvfrom: returns %ld\n", (long)xReturned);
                 }
                 else
                 {

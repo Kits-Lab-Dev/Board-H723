@@ -271,9 +271,9 @@ int LoadPubKeyList(StrList *strList, int format, PwMapList *mapList)
             *fileName = 0;
             fileName++;
 
-            load_file(fileName, NULL, &bufSz);
+            SSHLoadFile(fileName, NULL, &bufSz);
             buf = (byte *)WMALLOC(bufSz, NULL, 0);
-            bufSz = load_file(fileName, buf, &bufSz);
+            bufSz = SSHLoadFile(fileName, buf, &bufSz);
             if (bufSz > 0)
             {
                 if (format == WOLFSSH_FORMAT_SSH)

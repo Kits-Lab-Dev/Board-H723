@@ -305,6 +305,29 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     luaengine
 ) 
 
+# Наш код (app/, libs/, Core/, recipes/) — без неявных объявлений функций и смешения
+# указателей с целыми: в GCC 14 это ошибки по умолчанию, ловим их и на GCC 13.
+# Сторонние библиотеки (third_party/, Drivers/, файлы, пропатченные в build/) не трогаем.
+set(H723_STRICT_OPTIONS
+    -Werror=implicit-function-declaration
+    -Werror=int-conversion
+    -Werror=incompatible-pointer-types
+    -Werror=return-type
+)
+foreach(tgt ${CMAKE_PROJECT_NAME} luaengine nimble mbedtls stm32cubemx)
+    get_target_property(tgt_sources ${tgt} SOURCES)
+    get_target_property(tgt_dir ${tgt} SOURCE_DIR)
+    foreach(src IN LISTS tgt_sources)
+        cmake_path(ABSOLUTE_PATH src BASE_DIRECTORY ${tgt_dir} NORMALIZE OUTPUT_VARIABLE src_abs)
+        if(src_abs MATCHES "\\.c$"
+           AND NOT src_abs MATCHES "/third_party/|/Drivers/"
+           AND NOT src_abs MATCHES "^${CMAKE_BINARY_DIR}/libs/")
+            set_source_files_properties(${src_abs} TARGET_DIRECTORY ${tgt}
+                PROPERTIES COMPILE_OPTIONS "${H723_STRICT_OPTIONS}")
+        endif()
+    endforeach()
+endforeach()
+
 # Debug output
 message(STATUS "CMAKE_BINARY_DIR: ${CMAKE_BINARY_DIR}")
 

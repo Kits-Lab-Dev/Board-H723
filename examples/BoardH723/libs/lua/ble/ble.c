@@ -1,6 +1,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <stdio.h>
 #include <string.h>
 #include "lua.h"
 #include "lauxlib.h"
@@ -20,6 +21,8 @@
 
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+#include "nimble/nimble_port.h"
+#include "bleuart/bleuart.h"
 
 lua_State *srv_L = NULL;
 lua_State *srv_thread_L = NULL;
@@ -67,9 +70,17 @@ LUA_LIB_FUNC static int l_ble_enable(lua_State *L)
     return 1;
 }
 
+/* Адрес BLE строкой "aa:bb:cc:dd:ee:ff" (в ble_addr_t байты от младшего) */
+static void ble_addr_to_str(const ble_addr_t *addr, char *str, size_t size)
+{
+    const uint8_t *v = addr->val;
+    snprintf(str, size, "%02x:%02x:%02x:%02x:%02x:%02x", v[5], v[4], v[3], v[2], v[1], v[0]);
+}
+
 static int l_ble_gap_event_cb(struct ble_gap_event *event, void *arg)
 {
     char addr_str[18];
+    struct ble_gap_conn_desc desc;
     switch (event->type)
     {
     case BLE_GAP_EVENT_CONNECT:
@@ -77,7 +88,10 @@ static int l_ble_gap_event_cb(struct ble_gap_event *event, void *arg)
         {
             // Успешное подключение
             lua_rawgeti(srv_L, LUA_REGISTRYINDEX, srv_connect_cb);
-            // ble_addr_to_str(&event->connect.conn.remote_id_addr.val, addr_str, sizeof(addr_str));
+            if (ble_gap_conn_find(event->connect.conn_handle, &desc) == 0)
+                ble_addr_to_str(&desc.peer_id_addr, addr_str, sizeof(addr_str));
+            else
+                addr_str[0] = 0;
             lua_pushstring(srv_L, addr_str);
             lua_call(srv_L, 1, 0);
         }
@@ -86,7 +100,7 @@ static int l_ble_gap_event_cb(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
         // Отключение
         lua_rawgeti(srv_L, LUA_REGISTRYINDEX, srv_disconnect_cb);
-        ble_addr_to_str(&event->disconnect.conn.peer_id_addr.val, addr_str, sizeof(addr_str));
+        ble_addr_to_str(&event->disconnect.conn.peer_id_addr, addr_str, sizeof(addr_str));
         lua_pushstring(srv_L, addr_str);
         lua_call(srv_L, 1, 0);
         break;

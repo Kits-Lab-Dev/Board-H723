@@ -107,6 +107,7 @@ static int term_read(term_t *trm, char *c, size_t n)
             return -1;
         }
     }
+    return 0; /* данных для терминала пока нет */
 }
 
 static int newline(term_t *trm, const char *line)
@@ -639,7 +640,7 @@ static int execute(term_t *trm, int argc, const char *const *argv)
     if (strcmp(argv[0], "ip") == 0)
     {
         uint32_t ulIPAddress, ulNetMask, ulGatewayAddress, ulDNSServerAddress;
-        char cBuffer[16];
+        char cBuffer[64];
         char ipStr[16];
         struct xNetworkEndPoint *endPoint = NULL;
         for (int i = 0; i < 3; i++)
@@ -665,19 +666,19 @@ static int execute(term_t *trm, int argc, const char *const *argv)
             FreeRTOS_GetEndPointConfiguration(&ulIPAddress, &ulNetMask, &ulGatewayAddress, &ulDNSServerAddress, endPoint);
 
             FreeRTOS_inet_ntoa(ulIPAddress, ipStr);
-            sprintf(cBuffer, "\tIP Address: \t%s\r\n", ipStr);
+            snprintf(cBuffer, sizeof(cBuffer), "\tIP Address: \t%s\r\n", ipStr);
             trm->output(trm, cBuffer);
 
             FreeRTOS_inet_ntoa(ulNetMask, ipStr);
-            sprintf(cBuffer, "\tSubnet Mask: \t%s\r\n", ipStr);
+            snprintf(cBuffer, sizeof(cBuffer), "\tSubnet Mask: \t%s\r\n", ipStr);
             trm->output(trm, cBuffer);
 
             FreeRTOS_inet_ntoa(ulGatewayAddress, ipStr);
-            sprintf(cBuffer, "\tGateway: \t%s\r\n", ipStr);
+            snprintf(cBuffer, sizeof(cBuffer), "\tGateway: \t%s\r\n", ipStr);
             trm->output(trm, cBuffer);
 
             FreeRTOS_inet_ntoa(ulDNSServerAddress, ipStr);
-            sprintf(cBuffer, "\tDNS Server: \t%s\r\n\r\n", ipStr);
+            snprintf(cBuffer, sizeof(cBuffer), "\tDNS Server: \t%s\r\n\r\n", ipStr);
             trm->output(trm, cBuffer);
         }
         return 0;

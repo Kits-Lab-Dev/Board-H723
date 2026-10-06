@@ -348,6 +348,8 @@ _ssize_t read(int file, void *ptr, size_t len)
         return _read_r(_REENT, file, ptr, len);
 }
 
+int _write(int file, char *ptr, int len); /* Core/Src/syscalls.c */
+
 _ssize_t _write_r(struct _reent *r, int file, const void *ptr, size_t len)
 {
     if (file < FN)

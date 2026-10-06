@@ -21,6 +21,7 @@
 #define __CONSOLE_H__
 
 #include <stdio.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,10 +30,13 @@ extern "C" {
 #define console_printf(_fmt, ...) printf(_fmt, ##__VA_ARGS__)
 
 #define console_write(_buf, _len) fwrite(_buf, 1, _len, stdout)
-#define console_init(x) 0; x()
+/* консоль — stdin/stdout, обработчик чтения не нужен */
+#define console_init(x) 0
 
 static inline int console_r(char* buf, int len, int *fp){
-    int n = fgets(buf, len, stdin);
+    if (fgets(buf, len, stdin) == NULL)
+        return 0;
+    int n = strlen(buf);
     if(n > 0 && buf[n-1] == '\n'){
         *fp = 1;
     }

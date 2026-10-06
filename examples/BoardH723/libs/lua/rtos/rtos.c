@@ -1,6 +1,7 @@
 #include "lprefix.h"
 #include <limits.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "lua.h"
@@ -240,8 +241,17 @@ static int console_read(lua_State *L)
     return g_read(L, 1);
 }
 
+/* rtos.write(...) — строки и числа в терминал, как print, но без перевода строки */
 static int console_write(lua_State *L)
 {
+    int n = lua_gettop(L);
+    for (int i = 1; i <= n; i++)
+    {
+        size_t len;
+        const char *s = luaL_checklstring(L, i, &len);
+        luaPrint(s, len, L);
+    }
+    return 0;
 }
 
 /* }====================================================== */

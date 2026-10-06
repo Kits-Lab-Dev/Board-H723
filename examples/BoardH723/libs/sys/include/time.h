@@ -182,14 +182,14 @@ int timer_settime (timer_t timerid, int flags,
 int timer_gettime (timer_t timerid, struct itimerspec *value);
 int timer_getoverrun (timer_t timerid);
 
-/* High Resolution Sleep, P1003.1b-1993, p. 269 */
-
-int nanosleep (const struct timespec  *rqtp, struct timespec *rmtp);
-
 #ifdef __cplusplus
 }
 #endif
 #endif /* _POSIX_TIMERS */
+
+/* High Resolution Sleep, P1003.1b-1993, p. 269 — реализован в libs/sys/utils.c
+ * на vTaskDelay, поэтому объявлен и без _POSIX_TIMERS (нужен luasocket) */
+int nanosleep (const struct timespec  *rqtp, struct timespec *rmtp);
 
 #if defined(_POSIX_CLOCK_SELECTION)
 

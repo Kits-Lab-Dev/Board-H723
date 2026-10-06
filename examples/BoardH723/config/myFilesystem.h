@@ -28,6 +28,8 @@
 #include "sys/types.h"
 #include "sys/fcntl.h"
 #include "sys/stdio.h"
+#include <unistd.h>
+#include <reent.h>
 
 #define WFILE FILE
 
@@ -66,7 +68,7 @@ static inline int WFOPEN(void *fs, FILE **f, const char *n, const char *m)
 {
     (void)fs;
     *f = fopen(n, m);
-    return f;
+    return *f == NULL ? -1 : 0; /* wolfSSH ждёт 0 при успехе */
 }
 
 static inline int WFCLOSE(void *fs, FILE *f)
@@ -133,7 +135,7 @@ static inline int WPREAD(void *fs, int f, void *b, size_t c, word32 *o)
     return _read_r(_REENT, f, b, c);
 }
 
-static inline size_t WPWRITE(void *fs, int f, void *b, size_t c, off_t *o)
+static inline size_t WPWRITE(void *fs, int f, void *b, size_t c, word32 *o)
 {
     (void)fs;
     unsigned int ofst;
@@ -195,7 +197,7 @@ static inline int WCHMOD(void *fs, const char *p, mode_t m)
     return 0;
 }
 
-static inline int WFCHMOD(void *fs, const char *p, mode_t m)
+static inline int WFCHMOD(void *fs, int p, mode_t m)
 {
     (void)fs;
     (void)p;
@@ -205,7 +207,7 @@ static inline int WFCHMOD(void *fs, const char *p, mode_t m)
 
 // #include <sys/time.h>
 
-static inline int WFSETTIME(void *fs, FILE *f, const struct timeval *a, const struct timeval *m)
+static inline int WFSETTIME(void *fs, int f, word32 a, word32 m)
 {
     (void)fs;
     (void)f;
@@ -238,9 +240,10 @@ static inline int WFSETTIME(void *fs, FILE *f, const struct timeval *a, const st
     // }
 
     // return futimes(fd, tv);
+    return 0;
 }
 
-static inline int WSETTIME(void *fs, const char *f, const struct timeval *a, const struct timeval *m)
+static inline int WSETTIME(void *fs, const char *f, word32 a, word32 m)
 {
     (void)fs;
     (void)f;
@@ -303,9 +306,12 @@ typedef struct _FILEATRB
     _FILEATRB_EX *exts; /* extensions */
 } _FILEATRB;
 
-static inline int SFTP_GetAttributes(void *fs, const char *fileName, _FILEATRB *atr,
+/* atr — WS_SFTP_FILEATRB из wolfsftp.h (та же раскладка, что _FILEATRB): здесь
+ * он ещё не объявлен, поэтому void * */
+static inline int SFTP_GetAttributes(void *fs, const char *fileName, void *atrp,
                                      byte noFollow, void *heap)
 {
+    _FILEATRB *atr = atrp;
     WSTAT_T stats;
     memset(&stats, 0, sizeof(struct stat));
     (void)(heap);
@@ -347,8 +353,9 @@ static inline int SFTP_GetAttributes(void *fs, const char *fileName, _FILEATRB *
 }
 
 static inline int SFTP_GetAttributes_Handle(void *ssh, byte *handle, int handleSz,
-                                            char *name, _FILEATRB *atr)
+                                            char *name, void *atrp)
 {
+    _FILEATRB *atr = atrp;
     (void)name; // wolfSSH 1.5: имя файла нужно только при WOLFSSH_STOREHANDLE
     struct stat stats;
     if (handleSz != sizeof(word32))
