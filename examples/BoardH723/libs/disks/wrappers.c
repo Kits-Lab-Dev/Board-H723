@@ -130,7 +130,7 @@ int _open_r(struct _reent *r, const char *name, int flags, int mode)
         goto error;
     }
 
-    if (mode & O_APPEND)
+    if (flags & O_APPEND)
     {
         if (f_lseek(f, f->obj.objsize) != FR_OK)
         {

@@ -801,7 +801,8 @@ void EXTI9_5_IRQHandler(void)
 
 void EXTI15_10_IRQHandler(void)
 {
-    for (uint16_t pin = GPIO_PIN_10; pin <= GPIO_PIN_15; pin = pin << 1)
+    // uint32_t: у uint16_t после GPIO_PIN_15 (0x8000) сдвиг даёт 0 и цикл не кончается
+    for (uint32_t pin = GPIO_PIN_10; pin <= GPIO_PIN_15; pin = pin << 1)
     {
         HAL_GPIO_EXTI_IRQHandler(pin);
     }
