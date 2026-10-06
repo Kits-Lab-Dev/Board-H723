@@ -44,7 +44,14 @@ int listen(int sockfd, int backlog)
 
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
-    return (int)FreeRTOS_accept((Socket_t)sockfd, addr, addrlen);
+    Socket_t s = FreeRTOS_accept((Socket_t)sockfd, addr, addrlen);
+    // NULL — за время ожидания никто не подключился; без этой проверки
+    // наружу уходил дескриптор 0, и LuaSocket принимал его за соединение
+    if (s == NULL)
+        return setErrno(-pdFREERTOS_ERRNO_EAGAIN);
+    if (s == FREERTOS_INVALID_SOCKET)
+        return setErrno(-pdFREERTOS_ERRNO_EINVAL);
+    return (int)s;
 }
 
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen)
@@ -352,6 +359,16 @@ void freeaddrinfo(struct addrinfo *res)
 
 int getpeername(int sockfd, struct sockaddr *addr, socklen_t *addrlen)
 {
+    if (!addr || !addrlen || !IS_SOCKET_FD(sockfd))
+        return setErrno(-pdFREERTOS_ERRNO_EINVAL);
+    Socket_t s = (Socket_t)sockfd;
+    if (FreeRTOS_issocketconnected(s) != pdTRUE)
+        return setErrno(-pdFREERTOS_ERRNO_ENOTCONN);
+    memset(addr, 0, sizeof(struct sockaddr));
+    BaseType_t ret = FreeRTOS_GetRemoteAddress(s, addr);
+    if (ret < 0)
+        return setErrno(ret);
+    *addrlen = sizeof(struct sockaddr);
     return 0;
 }
 
@@ -401,17 +418,18 @@ int getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
 
 int getsockname(int s, struct sockaddr *addr, socklen_t *len)
 {
-    if(!addr || !len || s <= 0)
-        return -1;
-    memset(addr, 0, sizeof(struct sockaddr));
+    if (!addr || !len || !IS_SOCKET_FD(s))
+        return setErrno(-pdFREERTOS_ERRNO_EINVAL);
     Socket_t sock = (Socket_t)s;
+    memset(addr, 0, sizeof(struct sockaddr));
+    FreeRTOS_GetLocalAddress(sock, addr); // семейство и порт
+    // у сокета, привязанного к любому адресу, свой IP пуст — берём адрес интерфейса
+    if (addr->sin_address.ulIP_IPv4 == 0 && sock->pxEndPoint != NULL)
+        addr->sin_address.ulIP_IPv4 = sock->pxEndPoint->ipv4_settings.ulIPAddress;
     addr->sin_len = sizeof(struct sockaddr);
-    uint8_t l = sizeof(addr->sin_address.xIP_IPv6.ucBytes);
-    for(int i = 0; i < l; i++)
-        addr->sin_address.xIP_IPv6.ucBytes[i] = sock->pxEndPoint->ipv6_settings.xIPAddress.ucBytes[i];
-
-    addr->sin_address.ulIP_IPv4 = sock->pxEndPoint->ipv4_settings.ulIPAddress;
-    return 1;
+    addr->sin_family = FREERTOS_AF_INET;
+    *len = sizeof(struct sockaddr);
+    return 0;
 }
 
 int inet_pton(int af, const char *src, void *dst)

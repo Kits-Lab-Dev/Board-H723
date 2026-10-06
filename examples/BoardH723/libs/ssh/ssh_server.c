@@ -632,6 +632,10 @@ static void ServerTask(void *)
         SOCKADDR_IN_T clientAddr;
         socklen_t clientAddrSz = sizeof(clientAddr);
         int clientFd = accept(listenFd, (struct sockaddr *)&clientAddr, &clientAddrSz);
+        if (clientFd == -1 && errno == EAGAIN)
+        {
+            continue; // за время ожидания никто не подключился
+        }
         if (clientFd == -1)
         {
             ERR("tcp accept failed");
