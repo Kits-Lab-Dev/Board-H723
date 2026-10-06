@@ -4,6 +4,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "FreeRTOS_IP.h"
+#include "FreeRTOS_IP_Private.h"
 #include "sdram.h"
 #include "ramdisk.h"
 #include "dts.h"
@@ -161,16 +162,20 @@ static void checkDFURequest()
 {
     if (!dfuSocket)
         return;
-    char buf[16];
+    uint8_t *buf;
     struct freertos_sockaddr from;
     socklen_t fromLen = sizeof(from);
-    int32_t n = FreeRTOS_recvfrom(dfuSocket, buf, sizeof(buf), FREERTOS_MSG_DONTWAIT, &from, &fromLen);
-    bool dfu = n >= 3 && memcmp(buf, "dfu", 3) == 0;
-    bool esp = n >= 9 && memcmp(buf, "esploader", 9) == 0;
-    if (!dfu && !esp)
+    int32_t n = FreeRTOS_recvfrom(dfuSocket, &buf, 0, FREERTOS_ZERO_COPY | FREERTOS_MSG_DONTWAIT, &from, &fromLen);
+    if (n <= 0)
         return;
-    uint32_t mask = ncmNetEndPoint.ipv4_settings.ulNetMask;
-    if ((from.sin_address.ulIP_IPv4 & mask) != (ncmNetEndPoint.ipv4_settings.ulIPAddress & mask))
+    // Только пакеты, пришедшие по USB-кабелю. Сокет слушает все интерфейсы, а адрес
+    // отправителя в UDP подделывается: из Wi-Fi можно прислать пакет «от» 192.168.4.2
+    NetworkBufferDescriptor_t *nb = pxUDPPayloadBuffer_to_NetworkBuffer(buf);
+    bool usb = nb != NULL && nb->pxInterface == &ncmNetInterface;
+    bool dfu = usb && n >= 3 && memcmp(buf, "dfu", 3) == 0;
+    bool esp = usb && n >= 9 && memcmp(buf, "esploader", 9) == 0;
+    FreeRTOS_ReleaseUDPPayloadBuffer(buf);
+    if (!dfu && !esp)
         return;
     FreeRTOS_sendto(dfuSocket, "ok\n", 3, 0, &from, fromLen);
     if (esp)
