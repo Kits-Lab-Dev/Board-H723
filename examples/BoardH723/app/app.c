@@ -275,15 +275,6 @@ void appTask(void *)
     }
 }
 
-/* Прерывание EXTI по выводу GPIO_Pin (вызывается из HAL_GPIO_EXTI_Callback в pio.c).
- * Приложение переопределяет функцию и возвращает true для своих выводов —
- * тогда прерывание не уходит в Lua (pio.attachInterrupt) */
-__weak bool appGpioExti(uint16_t pin)
-{
-    UNUSED(pin);
-    return false;
-}
-
 void appStartEspLoader()
 {
     enterBootloaderMode = true;

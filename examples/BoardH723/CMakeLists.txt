@@ -32,7 +32,11 @@ option(H723_WITH_SSH "wolfSSH + wolfCrypt (GPLv3): SSH/SFTP-сервер с те
 if(H723_WITH_SSH)
     message(STATUS "ВНИМАНИЕ: включён SSH на wolfSSH (GPLv3) — прошивка распространяется под GPLv3")
 endif()
+option(H723_WITH_LUA "Интерпретатор Lua (MIT) с модулями платы и LuaSocket, ~160 КБ Flash" ON)
 option(H723_WITH_TLS "Модуль ssl для Lua (HTTPS) на Mbed TLS (Apache-2.0)" ON)
+if(NOT H723_WITH_LUA)
+    set(H723_WITH_TLS OFF) # HTTPS нужен только Lua
+endif()
 
 # Сторонние библиотеки (git submodule): git submodule update --init
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
@@ -123,7 +127,7 @@ add_compile_definitions(
     # SSH_SERVER_STACK_SDRAM
     SSH_BUFFER_SIZE=4096
 
-    WITH_LUA
+    $<$<BOOL:${H723_WITH_LUA}>:WITH_LUA>
     $<$<BOOL:${H723_WITH_TLS}>:WITH_TLS>
     $<$<BOOL:${H723_WITH_SSH}>:WITH_SSH>
 )
@@ -174,12 +178,15 @@ if(H723_WITH_SSH)
 endif()
 
 add_subdirectory(libs/esp/nimble_port)
-add_subdirectory(libs/lua) 
+if(H723_WITH_LUA)
+    add_subdirectory(libs/lua)
+endif()
 
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     # Add user sources here
     app/app.c
+    app/exti.c
     app/log.c
     libs/sdram/sdram.c
 
@@ -301,9 +308,11 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     board_includes
     freertos_headers
     lwmem
-    nimble 
-    luaengine
-) 
+    nimble
+)
+if(H723_WITH_LUA)
+    target_link_libraries(${CMAKE_PROJECT_NAME} luaengine)
+endif()
 
 # Наш код (app/, libs/, Core/, recipes/) — без неявных объявлений функций и смешения
 # указателей с целыми: в GCC 14 это ошибки по умолчанию, ловим их и на GCC 13.
@@ -315,6 +324,9 @@ set(H723_STRICT_OPTIONS
     -Werror=return-type
 )
 foreach(tgt ${CMAKE_PROJECT_NAME} luaengine nimble mbedtls stm32cubemx)
+    if(NOT TARGET ${tgt})
+        continue()
+    endif()
     get_target_property(tgt_sources ${tgt} SOURCES)
     get_target_property(tgt_dir ${tgt} SOURCE_DIR)
     foreach(src IN LISTS tgt_sources)

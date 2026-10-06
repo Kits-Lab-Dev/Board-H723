@@ -766,61 +766,14 @@ static int l_detachInterrupt(lua_State *L)
     return 0;
 }
 
-void EXTI0_IRQHandler(void)
+/* Прерывание вывода, на который Lua повесил pio.attachInterrupt: в очередь для extiTask.
+ * Вызывается из HAL_GPIO_EXTI_Callback (app/exti.c), если вывод не забрали ESP и приложение. */
+bool pioGpioExti(uint16_t pin)
 {
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-}
-
-void EXTI1_IRQHandler(void)
-{
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
-}
-
-void EXTI2_IRQHandler(void)
-{
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
-}
-
-void EXTI3_IRQHandler(void)
-{
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
-}
-
-void EXTI4_IRQHandler(void)
-{
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
-}
-
-void EXTI9_5_IRQHandler(void)
-{
-    for (uint16_t pin = GPIO_PIN_5; pin <= GPIO_PIN_9; pin = pin << 1)
-    {
-        HAL_GPIO_EXTI_IRQHandler(pin);
-    }
-}
-
-void EXTI15_10_IRQHandler(void)
-{
-    // uint32_t: у uint16_t после GPIO_PIN_15 (0x8000) сдвиг даёт 0 и цикл не кончается
-    for (uint32_t pin = GPIO_PIN_10; pin <= GPIO_PIN_15; pin = pin << 1)
-    {
-        HAL_GPIO_EXTI_IRQHandler(pin);
-    }
-}
-
-void ESP_EXTI_Callback();
-
-// Обработчик прерывания
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if ((GPIO_Pin == ESP_HANDSHAKE_Pin) || (GPIO_Pin == ESP_DATA_READY_Pin))
-    {
-        ESP_EXTI_Callback();
-        return;
-    }
-    if (appGpioExti(GPIO_Pin))
-        return;
-    xQueueSendFromISR(extiQueue, &GPIO_Pin, NULL);
+    if (extiQueue == NULL)
+        return false;
+    xQueueSendFromISR(extiQueue, &pin, NULL);
+    return true;
 }
 
 void extiTask(void *)
