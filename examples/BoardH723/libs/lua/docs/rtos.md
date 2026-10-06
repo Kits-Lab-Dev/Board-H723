@@ -63,7 +63,8 @@ v, vbat = rtos.voltage()
 rtos.reboot()
 rtos.reboot("dfu")
 ```
-Перезагружает систему. С `"dfu"` — в системный загрузчик STM32 (USB DFU) для прошивки через `STM32_Programmer_CLI -c port=usb1`.
+Перезагружает систему. С `"dfu"` — в системный загрузчик STM32 (USB DFU) для прошивки через `STM32_Programmer_CLI -c port=usb1`,
+с `"esploader"` — в ESP-Loader (`/SD/utils/ESPLoader.bin`) для прошивки ESP32-C2 по USB.
 
 ### read()
 ```lua

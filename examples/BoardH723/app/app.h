@@ -25,6 +25,14 @@ extern volatile float CPU_IDLE;
 void app();
 void bootloader();
 void rebootToDFU();
+void appStartEspLoader(); // ESP-Loader с /SD/utils/ESPLoader.bin (прошивка ESP32-C2 по USB)
+void recipesStart(void);  // рецепты из H723_RECIPES, файл генерирует CMake
+
+// Мигание светодиода PG3 из idle-задачи; false — светодиод свободен для приложения
+extern bool appLedHeartbeat;
+
+// Прерывание EXTI из ISR; переопредели и верни true для своих выводов
+bool appGpioExti(uint16_t pin);
 UBaseType_t uxRand(void);
 
 #ifdef WITH_LUA

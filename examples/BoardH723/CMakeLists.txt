@@ -270,10 +270,28 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     libs/ntp/ntpclient.c
 
     libs/term/term.c
-
-
-
 )
+
+# Рецепты из recipes/: cmake --preset Release -DH723_RECIPES="gpio_button;sd_file"
+# Каждый рецепт — recipes/<имя>/*.c, appTask вызывает <имя>_start() после запуска системы
+set(H723_RECIPES "" CACHE STRING "Рецепты из recipes/ через ;")
+set(RECIPES_DIR ${CMAKE_SOURCE_DIR}/../../recipes)
+set(RECIPES_DECL "")
+set(RECIPES_CALL "")
+foreach(recipe IN LISTS H723_RECIPES)
+    if(NOT EXISTS ${RECIPES_DIR}/${recipe}/${recipe}.c)
+        message(FATAL_ERROR "Нет рецепта recipes/${recipe}/${recipe}.c")
+    endif()
+    message("Рецепт: ${recipe}")
+    file(GLOB RECIPE_SOURCES ${RECIPES_DIR}/${recipe}/*.c)
+    target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${RECIPE_SOURCES})
+    target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${RECIPES_DIR}/${recipe})
+    string(APPEND RECIPES_DECL "void ${recipe}_start(void);\n")
+    string(APPEND RECIPES_CALL "    ${recipe}_start();\n")
+endforeach()
+file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/recipes_start.c CONTENT
+    "/* Сгенерировано CMake из H723_RECIPES */\n${RECIPES_DECL}\nvoid recipesStart(void)\n{\n${RECIPES_CALL}}\n")
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_BINARY_DIR}/recipes_start.c)
 
 
 # Add linked libraries

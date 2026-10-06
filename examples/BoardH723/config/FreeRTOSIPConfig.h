@@ -59,6 +59,9 @@ a socket. */
 #define ipconfigUSE_DNS_CACHE (1)
 #define ipconfigDNS_CACHE_NAME_LENGTH (64)
 #define ipconfigDNS_CACHE_ENTRIES (4)
+/* Все адреса имени, а не только последний из ответа: если один адрес не отвечает,
+ * клиент (getaddrinfo) может попробовать следующий */
+#define ipconfigDNS_CACHE_ADDRESSES_PER_ENTRY (4)
 #define ipconfigDNS_REQUEST_ATTEMPTS (5)
 #define ipconfigDNS_SEND_BLOCK_TIME_TICKS    pdMS_TO_TICKS( 500 )
 #define ipconfigDNS_RECEIVE_BLOCK_TIME_TICKS    pdMS_TO_TICKS( 1000 )

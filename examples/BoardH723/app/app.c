@@ -48,7 +48,8 @@ UBaseType_t uxRand(void)
     return v;
 }
 
-bool enterBootloaderMode = false;
+static bool enterBootloaderMode = false;
+bool appLedHeartbeat = true;
 
 #define APP_TASK_STACK_SIZE (1024)
 #define APP_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
@@ -257,6 +258,7 @@ void appTask(void *)
 
     startNTPTask();
     dfuSocketInit();
+    recipesStart();
 
     for (;;)
     {
@@ -267,29 +269,42 @@ void appTask(void *)
     }
 }
 
+/* Прерывание EXTI по выводу GPIO_Pin (вызывается из HAL_GPIO_EXTI_Callback в pio.c).
+ * Приложение переопределяет функцию и возвращает true для своих выводов —
+ * тогда прерывание не уходит в Lua (pio.attachInterrupt) */
+__weak bool appGpioExti(uint16_t pin)
+{
+    UNUSED(pin);
+    return false;
+}
+
+void appStartEspLoader()
+{
+    enterBootloaderMode = true;
+}
+
 void lowPriorityTickHook()
 {
     static uint32_t hrLedTicks;
-    if ((xTaskGetTickCount() - hrLedTicks) > 250)
+    if (appLedHeartbeat && (xTaskGetTickCount() - hrLedTicks) > 250)
     {
         hrLedTicks = xTaskGetTickCount();
         HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
     }
+    // Долгое нажатие BOOT (~1 с) — сброс; если держать дальше, BOOT0 = 1 и стартует
+    // системный загрузчик (DFU). Короткое нажатие свободно для приложения (PC13).
     static uint32_t bootMode;
     if (HAL_GPIO_ReadPin(BOOT_BTN_GPIO_Port, BOOT_BTN_Pin) == GPIO_PIN_SET)
     {
         bootMode++;
-        if (bootMode > 500) // system bootloader
+        if (bootMode > 500)
         {
             NVIC_SystemReset();
         }
     }
     else
     {
-        if (bootMode > 0)
-        {
-            enterBootloaderMode = true;
-        }
+        bootMode = 0;
     }
 }
 

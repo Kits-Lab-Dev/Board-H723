@@ -21,6 +21,7 @@ DSTATUS sdDiskWrite(const BYTE *buff, DWORD sector, UINT count);
 DSTATUS sdDiskIOctl(BYTE cmd, void *buff);
 
 bool sdDiskMount();
+bool sdDiskIsMounted(void);
 bool sdDiskUnmount();
 
 #ifdef __cplusplus

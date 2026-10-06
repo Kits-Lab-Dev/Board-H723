@@ -120,8 +120,10 @@ ssh root@<IP-адрес> -i ~/.ssh/mcu.key
 ### `reboot`
 
 - **Описание**: Перезагрузка системы.
-- **Синтаксис**: `reboot`
-- **Примечание**: Выполняет системную перезагрузку через NVIC.
+- **Синтаксис**: `reboot [dfu|esploader]`
+- **Примечание**: `reboot` — сброс через NVIC; `reboot dfu` — в системный загрузчик USB DFU
+  (прошивка через `STM32_Programmer_CLI -c port=usb1`, см. `tools/dfu_flash.py`);
+  `reboot esploader` — запуск `/SD/utils/ESPLoader.bin` для прошивки ESP32-C2.
 
 ### `exit`
 

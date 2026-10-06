@@ -466,6 +466,12 @@ static int execute(term_t *trm, int argc, const char *const *argv)
             vTaskDelay(100);
             rebootToDFU();
         }
+        if (argc > 1 && strcmp(argv[1], "esploader") == 0)
+        {
+            trm->output(trm, "Starting ESP-Loader from /SD/utils/ESPLoader.bin\r\n");
+            appStartEspLoader();
+            return 0;
+        }
         NVIC_SystemReset();
         return 0;
     }
@@ -490,7 +496,7 @@ static int execute(term_t *trm, int argc, const char *const *argv)
         trm->output(trm, "  top                   - Display system resources usage\r\n");
         trm->output(trm, "  initsddisk            - Initialize SD card\r\n");
         trm->output(trm, "  ip                    - Display IP address\r\n");
-        trm->output(trm, "  reboot [dfu]          - Restart system [into USB DFU bootloader]\r\n");
+        trm->output(trm, "  reboot [dfu|esploader] - Restart system [into USB DFU / ESP-Loader]\r\n");
         trm->output(trm, "  help                  - Show this help\r\n");
         return 0;
     }

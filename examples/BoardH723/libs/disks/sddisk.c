@@ -52,6 +52,11 @@ static void errCmplt(SD_HandleTypeDef *)
     xSemaphoreGiveFromISR(wSem, NULL);
 }
 
+bool sdDiskIsMounted(void)
+{
+    return isMounted;
+}
+
 bool sdCardPresent(void)
 {
     return sdCardInsert;

@@ -98,11 +98,18 @@ static int getV(lua_State *L)
     return 2;
 }
 
-// rtos.reboot() или rtos.reboot("dfu") — в системный загрузчик USB DFU
+// rtos.reboot(), rtos.reboot("dfu") — в системный загрузчик USB DFU,
+// rtos.reboot("esploader") — в ESP-Loader для прошивки ESP32-C2
 static int reboot(lua_State *L)
 {
-    if (strcmp(luaL_optstring(L, 1, ""), "dfu") == 0)
+    const char *mode = luaL_optstring(L, 1, "");
+    if (strcmp(mode, "dfu") == 0)
         rebootToDFU();
+    if (strcmp(mode, "esploader") == 0)
+    {
+        appStartEspLoader();
+        return 0;
+    }
     NVIC_SystemReset();
     return 0;
 }
