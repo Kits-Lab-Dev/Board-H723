@@ -84,20 +84,20 @@ STM32_Programmer_CLI -c port=usb1 -w build/Release/BoardH723.hex -s 0x08000000
 [esp32c2phy](https://github.com/Kits-Lab-Dev/esp32c2phy), собирается ESP-IDF 5.4 (на 5.5 нет
 `ble_hci_trans.h`). Прошивается через STM32: `reboot esploader` в SSH (или `rtos.reboot("esploader")`
 в Lua) — плата запускает мост ESP-Loader с `/SD/utils/ESPLoader.bin`, переводит ESP32-C2 в загрузчик,
-и на ПК появляется USB-UART (VID 0483, PID 5740). Дальше esptool, скорость 115200:
+и на ПК появляется USB-UART (VID 0483, PID 5740). Дальше esptool:
 
 ```bash
 cd esp32c2phy/build
-python -m esptool --chip esp32c2 -p COM5 -b 115200 --after no-reset-stub write-flash \
+python -m esptool --chip esp32c2 -p COM5 -b 921600 --after no-reset-stub write-flash \
   --flash-mode dio --flash-freq 60m --flash-size 2MB \
   0x0 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0x10000 esp32phyInterface.bin
 ```
 
 Загрузчик ESP включается один раз при запуске моста, DTR/RTS мост не передаёт: на каждый сеанс
-esptool — заново RESET платы и `reboot esploader`. Скорость выше 115200 не ставь; `read-flash` через
-мост теряет байты, запись проверяется по хэшу и проходит. После прошивки — RESET: основная прошивка
-перезапускает ESP. Проверка: в логе `Loaded app from partition at offset 0x10000`, Wi-Fi STA получает
-адрес, плата видна по BLE как `Mynewt_BLEuart`.
+esptool — заново RESET платы и `reboot esploader`. 921600 бод — запись 650 КБ за 10 с, `read-flash`
+всех 2 МБ за 30 с (2 Мбод тоже работает). После прошивки — RESET: основная прошивка перезапускает
+ESP. Проверка: в логе `Loaded app from partition at offset 0x10000`, Wi-Fi STA получает адрес, плата
+видна по BLE как `Mynewt_BLEuart`.
 
 ## Проверка на плате
 

@@ -26,6 +26,7 @@
 #include "FreeRTOS.h"
 #include "cmsis_os2.h"
 #include "queue.h"
+#include <stdbool.h>
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -196,6 +197,8 @@ static void txCplt(UART_HandleTypeDef *huart)
 
 void Change_UART_Setting()
 {
+  // отправка в UART, прерванная перенастройкой, не вызовет txCplt — приём USB разрешить здесь
+  bool txBusy = handle->gState == HAL_UART_STATE_BUSY_TX;
   if (HAL_UART_DeInit(handle) != HAL_OK)
   {
     /* Initialization Error */
@@ -281,6 +284,10 @@ void Change_UART_Setting()
   {
     /* Transfer error in reception process */
     Error_Handler();
+  }
+  if (txBusy)
+  {
+    txCplt(handle);
   }
 }
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
@@ -381,14 +388,23 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
   /*******************************************************************************/
   case CDC_SET_LINE_CODING:
-    Line_Coding.bitrate = (uint32_t)(pbuf[0] | (pbuf[1] << 8) |
-                                     (pbuf[2] << 16) | (pbuf[3] << 24));
-    Line_Coding.format = pbuf[4];
-    Line_Coding.paritytype = pbuf[5];
-    Line_Coding.datatype = pbuf[6];
-
-    Change_UART_Setting();
+  {
+    // Windows присылает те же параметры при каждой смене таймаутов порта (pyserial);
+    // перенастройка UART посреди приёма сбивает кадры — только при изменении
+    USBD_CDC_LineCodingTypeDef lc = {
+        .bitrate = (uint32_t)(pbuf[0] | (pbuf[1] << 8) | (pbuf[2] << 16) | (pbuf[3] << 24)),
+        .format = pbuf[4],
+        .paritytype = pbuf[5],
+        .datatype = pbuf[6]};
+    if (lc.bitrate != Line_Coding.bitrate || lc.format != Line_Coding.format ||
+        lc.paritytype != Line_Coding.paritytype || lc.datatype != Line_Coding.datatype ||
+        handle->gState == HAL_UART_STATE_RESET)
+    {
+      Line_Coding = lc;
+      Change_UART_Setting();
+    }
     break;
+  }
 
   case CDC_GET_LINE_CODING:
     pbuf[0] = (uint8_t)(Line_Coding.bitrate);
