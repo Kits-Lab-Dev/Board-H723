@@ -47,7 +47,9 @@ cmake --build build/Release
 
 Результат — `build/Release/BoardH723.elf` / `.hex` / `.bin` (ELF с отладочной информацией).
 Опции: `-DH723_WITH_SSH=OFF` убирает SSH/SFTP (wolfSSH под GPLv3 — с ним вся прошивка GPLv3),
-`-DH723_WITH_TLS=OFF` убирает HTTPS для Lua. Собирается GCC 13 (STM32CubeCLT) и GCC 14 (Arm GNU Toolchain).
+`-DH723_WITH_TLS=OFF` убирает HTTPS для Lua, `-DH723_WITH_LUA=OFF` — Lua целиком (вместе с HTTPS
+для него; прошивка с SSH — 482 КБ вместо 811 КБ, место под LVGL). Собирается GCC 13 (STM32CubeCLT)
+и GCC 14 (Arm GNU Toolchain).
 В нашем коде (`app/`, `libs/`, `Core/`, `recipes/`) неявное объявление функции, смешение указателя
 с целым и `return` без значения — ошибки (`-Werror=...` в `CMakeLists.txt`): объявляй функции в
 заголовках и подключай их. Предупреждения из `third_party/` — не наши, их не чиним.

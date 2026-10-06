@@ -13,6 +13,7 @@
 | [sd_file](sd_file/README.md) | дозапись в файл на SD, замер скорости записи и чтения |
 | [rtos_queue](rtos_queue/README.md) | две задачи FreeRTOS и очередь между ними |
 | [lcd_ltdc](lcd_ltdc/README.md) | дисплей RGB 800×480: LTDC, DMA2D, двойной буфер в SDRAM, картинка с SD |
+| [lvgl_demo](lvgl_demo/README.md) | интерфейс на LVGL 9: сенсорный экран GT911, графики, русский шрифт TTF с SD |
 
 ## Как включить
 
@@ -37,6 +38,8 @@ CMake добавляет в сборку все `.c` из папок рецеп�
 1. Папка `recipes/my_thing/` с `my_thing.c`, где есть `void my_thing_start(void)`.
 2. `my_thing_start()` только создаёт задачу FreeRTOS и сразу возвращается: `appTask` на ней не задерживается.
 3. `cmake --preset Release -DH723_RECIPES="my_thing"`.
+4. Если рецепту нужны библиотеки или код другого рецепта — они подключаются в
+   `recipes/my_thing/recipe.cmake` (образец — `lvgl_demo/recipe.cmake`).
 
 Правила, которые соблюдают все рецепты:
 

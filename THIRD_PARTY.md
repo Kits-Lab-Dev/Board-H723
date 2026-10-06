@@ -27,12 +27,14 @@
 | [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) | 3.6.7 LTS | Apache-2.0 | `third_party/mbedtls` | — (настройки в `config/mbedtls_board_config.h`; TLS для Lua и криптография NimBLE) |
 | [wolfSSL](https://github.com/wolfSSL/wolfssl) (только wolfCrypt) | 5.9.4 | **GPLv3** | `third_party/wolfssl` | — (только при `H723_WITH_SSH`) |
 | [wolfSSH](https://github.com/wolfSSL/wolfssh) | 1.5.0 | **GPLv3** | `third_party/wolfssh` | — (только при `H723_WITH_SSH`) |
+| [LVGL](https://github.com/lvgl/lvgl) | 9.6.0 | MIT | `third_party/lvgl` | — (настройки в `config/lv_conf.h`; только с рецептом `lvgl_demo`) |
 
 ## Лежат в репозитории
 
 | Компонент | Версия | Лицензия | Где | Почему не submodule |
 |---|---|---|---|---|
 | [FatFs](http://elm-chan.org/fsw/ff/) | R0.16 | BSD-1 (ChaN) | `third_party/fatfs` | у FatFs нет официального git; файлы без изменений |
+| [PT Sans](https://fonts.google.com/specimen/PT+Sans) (ParaType) | 2010 | SIL OFL 1.1 | `examples/BoardH723/app/SD/fonts` | шрифт для SD-карты, файлы без изменений из [google/fonts](https://github.com/google/fonts/tree/main/ofl/ptsans) |
 | [LuaFileSystem](https://github.com/lunarmodules/luafilesystem) | 1.8.0 | MIT | `examples/BoardH723/libs/lua/lfs` | переписан под FatFs |
 | [lua-cjson](https://github.com/mpx/lua-cjson) | 2.1devel | MIT | `examples/BoardH723/libs/lua/luajson` | доработан под SDRAM |
 | Порт NimBLE: `syscfg.h`, `bleuart` | на основе 1.8 | Apache-2.0 | `examples/BoardH723/libs/esp/nimble_port` | наш конфиг и сервис |

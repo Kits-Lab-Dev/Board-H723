@@ -146,17 +146,27 @@ void lcdRestore(int x, int y, int w, int h, const uint16_t *screen)
 
 // ---------- LTDC ----------
 
+void lcdShow(const uint16_t *buffer)
+{
+    // Новый адрес вступит в силу в начале следующего кадра (VBR — reload on vertical
+    // blanking); до этого на экране прежний буфер, и рисовать в него нельзя
+    LTDC_Layer1->CFBAR = (uint32_t)buffer;
+    LTDC->SRCR = LTDC_SRCR_VBR;
+    while (LTDC->SRCR & LTDC_SRCR_VBR)
+        vTaskDelay(1);
+}
+
 void lcdSwap(void)
 {
     uint16_t *t = frontBuffer;
     frontBuffer = backBuffer;
     backBuffer = t;
-    // Новый адрес вступит в силу в начале следующего кадра (VBR — reload on vertical
-    // blanking); до этого старый задний буфер ещё на экране, и рисовать в него нельзя
-    LTDC_Layer1->CFBAR = (uint32_t)frontBuffer;
-    LTDC->SRCR = LTDC_SRCR_VBR;
-    while (LTDC->SRCR & LTDC_SRCR_VBR)
-        vTaskDelay(1);
+    lcdShow(frontBuffer);
+}
+
+uint16_t *lcdFrameBuffer(int i)
+{
+    return i == 0 ? frontBuffer : backBuffer;
 }
 
 bool lcdInit(void)

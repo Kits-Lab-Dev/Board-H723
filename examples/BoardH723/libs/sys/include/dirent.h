@@ -20,6 +20,11 @@ struct dirent
 #endif
 };
 
+/* Значения d_type */
+#define DT_UNKNOWN 0
+#define DT_DIR 4
+#define DT_REG 8
+
 struct dirent *readdir(DIR *dir);
 DIR *opendir(const char *name);
 int closedir(DIR *dir);

@@ -471,6 +471,7 @@ struct dirent *readdir(DIR *dir)
             memset(&d, 0, sizeof(d));
             strncpy(d.d_name, virtual_dirs[virtual_dir_index].name, sizeof(d.d_name) - 1);
             d.d_name[sizeof(d.d_name) - 1] = '\0';
+            d.d_type = DT_DIR;
             virtual_dir_index++;
             return &d;
         }
@@ -492,6 +493,7 @@ struct dirent *readdir(DIR *dir)
     memset(&d, 0, sizeof(d));
     strncpy(d.d_name, fno.fname, sizeof(d.d_name) - 1);
     d.d_name[sizeof(d.d_name) - 1] = '\0';
+    d.d_type = (fno.fattrib & AM_DIR) ? DT_DIR : DT_REG;
     return &d;
 }
 

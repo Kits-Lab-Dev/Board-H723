@@ -37,6 +37,11 @@ void lcdRestore(int x, int y, int w, int h, const uint16_t *screen);
 // Показать задний буфер со следующего кадра и дождаться этого (без разрывов картинки)
 void lcdSwap(void);
 
+// Для библиотек, которые сами рисуют в буферы (LVGL): адрес кадрового буфера 0 или 1
+// (LCD_WIDTH × LCD_HEIGHT × 2 байта) и показ буфера со следующего кадра с ожиданием
+uint16_t *lcdFrameBuffer(int i);
+void lcdShow(const uint16_t *buffer);
+
 // Загрузить BMP 24 бита в RGB565 (память в SDRAM). NULL — ошибка.
 uint16_t *lcdLoadBMP(const char *path, int *w, int *h);
 // Освободить картинку из lcdLoadBMP
