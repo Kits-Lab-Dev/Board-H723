@@ -18,6 +18,9 @@ SDRAM 32 МБ, microSD, Wi-Fi/BLE на ESP32-C2, USB-C. Основной язы�
   - `app/SD/` — содержимое SD-карты (`boot.lua`, библиотеки Lua, `utils/ESPLoader.bin`).
   - `Core/` — код CubeMX (`main.c`, `*_it.c`, инициализация периферии), см. правила ниже.
 - `examples/ESP-Loader/` — мост USB-UART для прошивки ESP32-C2 через STM32.
+- `recipes/` — готовые проверенные модули на C (кнопка, UART+DMA, I2C-датчик, Wi-Fi+HTTP, SD, задачи
+  FreeRTOS) с объяснением; подключаются опцией `-DH723_RECIPES="имя;имя"`, см. `recipes/README.md`.
+  Начинай свою задачу с ближайшего рецепта.
 - `tools/dfu_flash.py` — прошивка по USB без кнопок.
 - `hardware/` — схема и плата в PDF.
 
@@ -80,7 +83,7 @@ STM32_Programmer_CLI -c port=usb1 -w build/Release/BoardH723.hex -s 0x08000000
   Макросы лога — `INF`, `WRN`, `ERR` из `app/log.h`.
 - SSH/SFTP: `ssh root@192.168.4.1` (пароль `123` из `CMakeLists.txt`; если на SD есть
   `/SD/.ssh/mcu.key.pub` — вход только по этому ключу). Команды оболочки: `help`, `ls`, `cat`, `top`,
-  `ip`, `reboot`, `reboot dfu`, `lua -f /SD/x.lua`. Оболочка режет аргументы по пробелам и не понимает
+  `ip`, `reboot`, `reboot dfu`, `reboot esploader`, `lua -f /SD/x.lua`. Оболочка режет аргументы по пробелам и не понимает
   кавычки — Lua запускай файлом.
 
 ## Правила
@@ -95,7 +98,7 @@ STM32_Programmer_CLI -c port=usb1 -w build/Release/BoardH723.hex -s 0x08000000
   (`pvPortMalloc`; `malloc` уже переопределён на неё).
 - Сторонние библиотеки не правим и не копируем к себе: настройки — в `config/`, неизбежные правки —
   в `cmake/patch_source.cmake`.
-- Свой код — в `app/` или новой папке `libs/<имя>/`; файлы добавляй в `target_sources` и
+- Свой модуль — проще всего как рецепт (`recipes/<имя>/`, см. `recipes/README.md`). Иначе — в `app/` или `libs/<имя>/`; файлы добавляй в `target_sources` и
   `board_includes` в `examples/BoardH723/CMakeLists.txt`. Новые задачи FreeRTOS создавай из `appTask`
   после инициализации нужных подсистем.
 - Лицензия: код KitsLab — MIT; сторонние компоненты — свои лицензии, см. `THIRD_PARTY.md`.
