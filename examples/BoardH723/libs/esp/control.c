@@ -460,7 +460,7 @@ bool wifiStopSoftAP()
     if (!espEnabled)
         return false;
     pControlMsg msg, resp;
-    msg.id = Req_StartSoftAP;
+    msg.id = Req_StopSoftAP;
     msg.type = ESP_AP;
     msg.len = 1;
     msg.data = (uint8_t *)pvPortMalloc(msg.len); // очистка в sendEvent

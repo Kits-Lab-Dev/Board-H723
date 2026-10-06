@@ -245,6 +245,86 @@ LUA_LIB_FUNC static int setPowerSaveMode(lua_State *L)
     return 1;
 }
 
+// startAP(ssid [, password [, channel [, maxConn]]]): без пароля — открытая сеть,
+// пароль — WPA2-PSK (8–63 символа). Клиенты получают адрес 192.168.11.x по DHCP.
+LUA_LIB_FUNC static int startAP(lua_State *L)
+{
+    size_t ssidLen, pwdLen = 0;
+    const char *ssid = luaL_checklstring(L, 1, &ssidLen);
+    const char *pwd = luaL_optlstring(L, 2, NULL, &pwdLen);
+    lua_Integer chnl = luaL_optinteger(L, 3, 1);
+    lua_Integer maxConn = luaL_optinteger(L, 4, 4);
+
+    if (ssidLen == 0 || ssidLen >= SSID_LENGTH)
+        return luaL_argerror(L, 1, "SSID length must be 1..32");
+    if (pwd != NULL && pwdLen > 0 && (pwdLen < 8 || pwdLen >= PASSWORD_LENGTH))
+        return luaL_argerror(L, 2, "password length must be 8..63");
+    if (chnl < 1 || chnl > 13)
+        return luaL_argerror(L, 3, "channel must be 1..13");
+    if (maxConn < 1 || maxConn > 10)
+        return luaL_argerror(L, 4, "maxConn must be 1..10");
+
+    wifiSoftAPConfig cfg = {0};
+    memcpy(cfg.ssid, ssid, ssidLen);
+    if (pwd != NULL && pwdLen > 0)
+    {
+        memcpy(cfg.pwd, pwd, pwdLen);
+        cfg.auth_mode = AuthWPA2_PSK;
+    }
+    else
+    {
+        cfg.auth_mode = AuthOpen;
+    }
+    cfg.chnl = (uint8_t)chnl;
+    cfg.max_conn = (uint8_t)maxConn;
+    cfg.ssid_hidden = 0;
+    cfg.bw = WIFI_BW_HT20;
+
+    if (!wifiStartSoftAP(&cfg))
+    {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "Failed to start soft AP");
+        return 2;
+    }
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+LUA_LIB_FUNC static int stopAP(lua_State *L)
+{
+    if (!wifiStopSoftAP())
+    {
+        lua_pushboolean(L, false);
+        lua_pushstring(L, "Failed to stop soft AP");
+        return 2;
+    }
+    lua_pushboolean(L, true);
+    return 1;
+}
+
+// apClients(): таблица {mac, rssi} подключённых к точке доступа клиентов
+LUA_LIB_FUNC static int apClients(lua_State *L)
+{
+    wifiConnectedStantion *recs = (wifiConnectedStantion *)sdramMalloc(CONTROL_DATA_LEN);
+    if (recs == NULL)
+        return luaL_error(L, "out of memory");
+    uint32_t n = wifiGetConnectedStaList(recs);
+    lua_newtable(L);
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        lua_newtable(L);
+        char mac[MAC_LEN * 3 + 1];
+        macToString(recs[i].mac, mac);
+        lua_pushstring(L, mac);
+        lua_setfield(L, -2, "mac");
+        lua_pushinteger(L, recs[i].rssi);
+        lua_setfield(L, -2, "rssi");
+        lua_rawseti(L, -2, i + 1);
+    }
+    sdramFree(recs);
+    return 1;
+}
+
 static const luaL_Reg tab_funcs[] = {
 
     {"enable", enable},
@@ -257,7 +337,10 @@ static const luaL_Reg tab_funcs[] = {
     {"getAPConfig", getAPConfig},
     {"connected", connected},
     {"disconnect", disconnect},
-    {"setPowerSaveMode", setPowerSaveMode}, 
+    {"setPowerSaveMode", setPowerSaveMode},
+    {"startAP", startAP},
+    {"stopAP", stopAP},
+    {"apClients", apClients},
     
     {NULL, NULL}};
 
