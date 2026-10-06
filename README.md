@@ -81,6 +81,20 @@ cmake --preset Release -DH723_WITH_SSH=OFF
 - Расширение [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools)
 - Для SSH: генерация ключей через `ssh-keygen`
 
+## Прошивка
+
+По USB без кнопок (плата подключена USB-C, в ней работает эта прошивка; нужен `STM32_Programmer_CLI` из STM32CubeCLT):
+
+```bash
+python tools/dfu_flash.py
+```
+
+Скрипт переводит плату в USB DFU UDP-пакетом и прошивает `examples/BoardH723/build/Release/BoardH723.hex`.
+Если плата не отвечает — зажмите BOOT, нажмите RESET, отпустите BOOT и запустите скрипт снова.
+
+Описание железа для прошивки (память, такты, занятые выводы, разъёмы) — [docs/board.md](docs/board.md),
+инструкции для ИИ-агентов — [AGENTS.md](AGENTS.md).
+
 ## Как использовать
 
 1. Подключите плату через USB или Wi-Fi
