@@ -98,8 +98,11 @@ static int getV(lua_State *L)
     return 2;
 }
 
+// rtos.reboot() или rtos.reboot("dfu") — в системный загрузчик USB DFU
 static int reboot(lua_State *L)
 {
+    if (strcmp(luaL_optstring(L, 1, ""), "dfu") == 0)
+        rebootToDFU();
     NVIC_SystemReset();
     return 0;
 }

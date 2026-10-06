@@ -30,6 +30,10 @@
 #define BOOTLOOADER_ADDRESS D1_AXISRAM1_BASE
 #define BOOTLOADER_SIZE (320 * 1024)
 #define BOOTLOADER_PATH "/SD/utils/ESPLoader.bin"
+/* Системный загрузчик STM32H723 (USB DFU, UART) в ROM — AN2606 */
+#define SYSTEM_BOOTLOADER_ADDRESS 0x1FF09800
+/* UDP-пакет "dfu" на этот порт из USB-сети — перезагрузка в DFU без кнопки BOOT */
+#define DFU_UDP_PORT 7123
 
 #define HOSTNAME "MCU"
 
@@ -74,9 +78,41 @@ void luaTask(void *)
 }
 #endif
 
+void rebootToDFU()
+{
+    HAL_PWR_EnableBkUpAccess();
+    HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR31, SYSTEM_BOOTLOADER_ADDRESS);
+    HAL_PWR_DisableBkUpAccess();
+    NVIC_SystemReset();
+}
+
+/* Вызывается из main() до включения кэшей: адрес в RTC_BKP_DR31 оставлен
+ * перед сбросом — ESP-Loader в RAM_D1 или системный загрузчик в ROM */
 void bootloader()
 {
     uint32_t address = HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR31);
+    if (address == SYSTEM_BOOTLOADER_ADDRESS)
+    {
+        __disable_irq();
+        HAL_PWR_EnableBkUpAccess();
+        HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR31, 0);
+        HAL_PWR_DisableBkUpAccess();
+        // загрузчик ждёт такты и прерывания как после сброса
+        HAL_RCC_DeInit();
+        SysTick->CTRL = 0;
+        SysTick->LOAD = 0;
+        SysTick->VAL = 0;
+        for (int i = 0; i < 8; i++)
+        {
+            NVIC->ICER[i] = 0xFFFFFFFF;
+            NVIC->ICPR[i] = 0xFFFFFFFF;
+        }
+        SCB->VTOR = address;
+        __set_MSP(*(__IO uint32_t *)address);
+        void (*jump)(void) = (void (*)(void))(*(__IO uint32_t *)(address + 4));
+        __enable_irq();
+        jump();
+    }
     if (address == BOOTLOOADER_ADDRESS)
     {
         __disable_irq();
@@ -92,6 +128,47 @@ void bootloader()
         __enable_irq();
         jump();
     }
+}
+
+/* Сокет для команды "dfu": опрашивается без ожидания из цикла appTask,
+ * принимаются пакеты только из подсети USB (ncmNetEndPoint) */
+static Socket_t dfuSocket;
+
+static void dfuSocketInit()
+{
+    dfuSocket = FreeRTOS_socket(FREERTOS_AF_INET, FREERTOS_SOCK_DGRAM, FREERTOS_IPPROTO_UDP);
+    if (dfuSocket == FREERTOS_INVALID_SOCKET)
+    {
+        dfuSocket = NULL;
+        return;
+    }
+    struct freertos_sockaddr addr = {0};
+    addr.sin_family = FREERTOS_AF_INET;
+    addr.sin_port = FreeRTOS_htons(DFU_UDP_PORT);
+    if (FreeRTOS_bind(dfuSocket, &addr, sizeof(addr)) != 0)
+    {
+        FreeRTOS_closesocket(dfuSocket);
+        dfuSocket = NULL;
+    }
+}
+
+static void checkDFURequest()
+{
+    if (!dfuSocket)
+        return;
+    char buf[8];
+    struct freertos_sockaddr from;
+    socklen_t fromLen = sizeof(from);
+    int32_t n = FreeRTOS_recvfrom(dfuSocket, buf, sizeof(buf), FREERTOS_MSG_DONTWAIT, &from, &fromLen);
+    if (n < 3 || memcmp(buf, "dfu", 3) != 0)
+        return;
+    uint32_t mask = ncmNetEndPoint.ipv4_settings.ulNetMask;
+    if ((from.sin_address.ulIP_IPv4 & mask) != (ncmNetEndPoint.ipv4_settings.ulIPAddress & mask))
+        return;
+    WRN("DFU request, rebooting to system bootloader\n");
+    FreeRTOS_sendto(dfuSocket, "ok\n", 3, 0, &from, fromLen);
+    vTaskDelay(100);
+    rebootToDFU();
 }
 
 static void checkBootMode()
@@ -179,10 +256,12 @@ void appTask(void *)
 #endif
 
     startNTPTask();
-    
+    dfuSocketInit();
+
     for (;;)
     {
         checkBootMode();
+        checkDFURequest();
         sdCardDetectLoop();
         vTaskDelay(1000);
     }

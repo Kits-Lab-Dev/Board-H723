@@ -68,6 +68,7 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+extern const uint32_t g_pfnVectors[];
 
 /* USER CODE END 0 */
 
@@ -79,6 +80,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  // после команды Go системного загрузчика (DFU -s) VTOR указывает в ROM
+  SCB->VTOR = (uint32_t)g_pfnVectors;
   MPU_Config();
   HAL_Init();
   SystemClock_Config();

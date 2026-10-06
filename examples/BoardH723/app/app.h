@@ -24,6 +24,7 @@ extern volatile float CPU_IDLE;
 
 void app();
 void bootloader();
+void rebootToDFU();
 UBaseType_t uxRand(void);
 
 #ifdef WITH_LUA

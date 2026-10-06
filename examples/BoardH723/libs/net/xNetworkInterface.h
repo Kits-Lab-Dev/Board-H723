@@ -25,6 +25,7 @@ void vNetworkNotifyIFDown(int interface);
 extern NetworkInterface_t staNetInterface;
 extern NetworkInterface_t apNetInterface;
 extern NetworkInterface_t ncmNetInterface;
+extern NetworkEndPoint_t ncmNetEndPoint;
 
 
 #ifdef __cplusplus

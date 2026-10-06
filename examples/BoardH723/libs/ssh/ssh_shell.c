@@ -460,6 +460,12 @@ static int execute(term_t *trm, int argc, const char *const *argv)
     // Команда reboot - перезагрузка системы
     if (strcmp(argv[0], "reboot") == 0)
     {
+        if (argc > 1 && strcmp(argv[1], "dfu") == 0)
+        {
+            trm->output(trm, "Rebooting to USB DFU bootloader\r\n");
+            vTaskDelay(100);
+            rebootToDFU();
+        }
         NVIC_SystemReset();
         return 0;
     }
@@ -484,7 +490,7 @@ static int execute(term_t *trm, int argc, const char *const *argv)
         trm->output(trm, "  top                   - Display system resources usage\r\n");
         trm->output(trm, "  initsddisk            - Initialize SD card\r\n");
         trm->output(trm, "  ip                    - Display IP address\r\n");
-        trm->output(trm, "  reboot                - Restart system\r\n");
+        trm->output(trm, "  reboot [dfu]          - Restart system [into USB DFU bootloader]\r\n");
         trm->output(trm, "  help                  - Show this help\r\n");
         return 0;
     }

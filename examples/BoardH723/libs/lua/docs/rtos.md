@@ -58,11 +58,12 @@ v, vbat = rtos.voltage()
 ```
 Возвращает напряжение питания системы и батареи (в настоящее время не реализовано).
 
-### reboot()
+### reboot([mode])
 ```lua
 rtos.reboot()
+rtos.reboot("dfu")
 ```
-Перезагружает систему.
+Перезагружает систему. С `"dfu"` — в системный загрузчик STM32 (USB DFU) для прошивки через `STM32_Programmer_CLI -c port=usb1`.
 
 ### read()
 ```lua
