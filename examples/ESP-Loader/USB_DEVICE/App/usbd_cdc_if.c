@@ -38,11 +38,13 @@ static USBD_CDC_LineCodingTypeDef Line_Coding;
 static UART_HandleTypeDef *handle = &huart7;
 static uint8_t b;
 QueueHandle_t rxQueue;
-typedef struct
-{
-  uint8_t data;
-  uint8_t ch;
-} RxMsg;
+/* ESP -> ПК: байты из прерывания UART копятся в очереди, задача шлёт их пачками */
+/* короче пакета HS (512): иначе хост ждёт продолжения или пакета нулевой длины */
+#define USB_TX_CHUNK 511
+static uint8_t usbTxBuf[USB_TX_CHUNK];
+/* ПК -> ESP: пакет USB уходит в UART без блокировки; следующий пакет USB
+ * принимается только после отправки — так ПК не обгоняет UART */
+static uint8_t *usbRxBuf;
 
 /* USER CODE END PV */
 
@@ -144,30 +146,52 @@ static int8_t CDC_TransmitCplt_HS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 void rxTask()
 {
+  rxQueue = xQueueCreate(4096, sizeof(uint8_t));
   HAL_GPIO_WritePin(ESP_EN_GPIO_Port, ESP_EN_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(ESP_BOOT_GPIO_Port, ESP_BOOT_Pin, GPIO_PIN_RESET);
   vTaskDelay(100);
   HAL_GPIO_WritePin(ESP_EN_GPIO_Port, ESP_EN_Pin, GPIO_PIN_SET);
   vTaskDelay(100);
   HAL_GPIO_WritePin(ESP_BOOT_GPIO_Port, ESP_BOOT_Pin, GPIO_PIN_SET);
-  rxQueue = xQueueCreate(2048, sizeof(RxMsg));
-  uint8_t data;
   for (;;)
   {
-    if (xQueueReceive(rxQueue, &data, portMAX_DELAY) == pdPASS)
+    uint16_t n = 0;
+    if (xQueueReceive(rxQueue, &usbTxBuf[n], portMAX_DELAY) != pdPASS)
+      continue;
+    n++;
+    // добрать то, что пришло, пока ждали USB
+    while (n < USB_TX_CHUNK && xQueueReceive(rxQueue, &usbTxBuf[n], 0) == pdPASS)
+      n++;
+    while (CDC_Transmit_HS(usbTxBuf, n) != USBD_OK)
     {
-      while (CDC_Transmit_HS(&data, 1) != USBD_OK)
-      {
-        vTaskDelay(1);
-      }
+      vTaskDelay(1);
+    }
+    // буфер занят, пока пакет не ушёл
+    while (((USBD_CDC_HandleTypeDef *)hUsbDeviceHS.pClassData)->TxState != 0)
+    {
+      taskYIELD();
     }
   }
 }
 
 void rxCplt(UART_HandleTypeDef *huart)
 {
-  xQueueSendFromISR(rxQueue, &b, pdFALSE);
+  BaseType_t woken = pdFALSE;
+  xQueueSendFromISR(rxQueue, &b, &woken);
   HAL_UART_Receive_IT(huart, &b, 1);
+  portYIELD_FROM_ISR(woken);
+}
+
+/* ошибка приёма (переполнение, шум) останавливает приём в HAL — запустить заново */
+static void rxError(UART_HandleTypeDef *huart)
+{
+  HAL_UART_Receive_IT(huart, &b, 1);
+}
+
+static void txCplt(UART_HandleTypeDef *huart)
+{
+  USBD_CDC_SetRxBuffer(&hUsbDeviceHS, usbRxBuf);
+  USBD_CDC_ReceivePacket(&hUsbDeviceHS);
 }
 
 void Change_UART_Setting()
@@ -248,6 +272,10 @@ void Change_UART_Setting()
   }
 
   HAL_UART_RegisterCallback(handle, HAL_UART_RX_COMPLETE_CB_ID, rxCplt);
+  HAL_UART_RegisterCallback(handle, HAL_UART_TX_COMPLETE_CB_ID, txCplt);
+  HAL_UART_RegisterCallback(handle, HAL_UART_ERROR_CB_ID, rxError);
+  // FIFO UART на 16 байт: запас на задержку прерывания, пока занят USB
+  HAL_UARTEx_EnableFifoMode(handle);
   /** rx for uart and tx buffer of usb */
   if (HAL_UART_Receive_IT(handle, &b, 1) != HAL_OK)
   {
@@ -407,10 +435,11 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 11 */
-  HAL_UART_Transmit(handle, Buf, *Len, 100);
-
-  USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceHS);
+  usbRxBuf = Buf;
+  if (*Len == 0 || HAL_UART_Transmit_IT(handle, Buf, *Len) != HAL_OK)
+  {
+    txCplt(handle);
+  }
   return (USBD_OK);
   /* USER CODE END 11 */
 }

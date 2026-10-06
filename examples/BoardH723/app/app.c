@@ -87,6 +87,18 @@ void rebootToDFU()
     NVIC_SystemReset();
 }
 
+/* Переход в программу с таблицей векторов по address. MSP и переход — одной
+ * вставкой: после смены MSP компилятор может снимать регистры уже с нового стека */
+static void __attribute__((noreturn)) jumpTo(uint32_t address)
+{
+    uint32_t sp = ((__IO uint32_t *)address)[0];
+    uint32_t pc = ((__IO uint32_t *)address)[1];
+    SCB->VTOR = address;
+    __enable_irq();
+    __asm volatile("msr msp, %0\n\tbx %1" : : "r"(sp), "r"(pc) : "memory");
+    __builtin_unreachable();
+}
+
 /* Вызывается из main() до включения кэшей: адрес в RTC_BKP_DR31 оставлен
  * перед сбросом — ESP-Loader в RAM_D1 или системный загрузчик в ROM */
 void bootloader()
@@ -108,11 +120,7 @@ void bootloader()
             NVIC->ICER[i] = 0xFFFFFFFF;
             NVIC->ICPR[i] = 0xFFFFFFFF;
         }
-        SCB->VTOR = address;
-        __set_MSP(*(__IO uint32_t *)address);
-        void (*jump)(void) = (void (*)(void))(*(__IO uint32_t *)(address + 4));
-        __enable_irq();
-        jump();
+        jumpTo(address);
     }
     if (address == BOOTLOOADER_ADDRESS)
     {
@@ -120,14 +128,9 @@ void bootloader()
         HAL_PWR_EnableBkUpAccess();
         HAL_RTCEx_BKUPWrite(&hrtc, RTC_BKP_DR31, 0);
         HAL_PWR_DisableBkUpAccess();
-        __set_PRIMASK(1);
-        SCB->VTOR = address;
-        // uint32_t msp_value = *(__IO uint32_t *)address;
-        // __set_MSP(msp_value);
-        __IO uint32_t a = *(__IO uint32_t *)(address + 4);
-        void (*jump)(void) = (void (*)(void))a;
-        __enable_irq();
-        jump();
+        // ESP-Loader стартует как после сброса: без MPU главной прошивки
+        HAL_MPU_Disable();
+        jumpTo(address);
     }
 }
 
@@ -176,20 +179,38 @@ static void checkBootMode()
 {
     if (enterBootloaderMode)
     {
+        enterBootloaderMode = false;
         WRN("bootloader mode...\n");
         uint8_t *loader = sdramMalloc(BOOTLOADER_SIZE);
-        FILE *f = fopen(BOOTLOADER_PATH, "r+");
+        FILE *f = fopen(BOOTLOADER_PATH, "r");
         if (!f)
         {
             ERR("Failed to open bootloader file\n");
             return;
         }
         int rb = fread(loader, 1, BOOTLOADER_SIZE, f);
+        fclose(f);
         if (rb > 0)
         {
             vTaskDelay(100);
             vPortEnterCritical();
             __disable_irq();
+            // образ в SDRAM записан через D-кэш; без MPU SDRAM читается мимо кэша
+            SCB_CleanDCache();
+            // ESP-Loader ложится на кучу FreeRTOS (вся RAM_D1), а DMA, USB, SDMMC и ETH
+            // пишут в свои буферы в куче и после __disable_irq — сбросить их до копирования.
+            // FMC не трогать: образ лежит в SDRAM
+            __HAL_RCC_AHB1_FORCE_RESET();
+            __HAL_RCC_AHB1_RELEASE_RESET();
+            __HAL_RCC_AHB2_FORCE_RESET();
+            __HAL_RCC_AHB2_RELEASE_RESET();
+            __HAL_RCC_MDMA_FORCE_RESET();
+            __HAL_RCC_MDMA_RELEASE_RESET();
+            __HAL_RCC_DMA2D_FORCE_RESET();
+            __HAL_RCC_DMA2D_RELEASE_RESET();
+            __HAL_RCC_SDMMC1_FORCE_RESET();
+            __HAL_RCC_SDMMC1_RELEASE_RESET();
+            __DSB();
             HAL_MPU_Disable();
             rb = (rb / 4) + 1;
             uint32_t *p = (uint32_t *)BOOTLOOADER_ADDRESS;
