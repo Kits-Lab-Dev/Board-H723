@@ -13,7 +13,8 @@ DNS, TCP-соединение, запрос, код ответа и объём. 
 ```
 
 Если оставить пустыми, рецепт сам не подключается и ждёт, пока Wi-Fi поднимет кто-то другой —
-например, `/SD/boot.lua` (`wifi.connect(...)`).
+`/SD/boot.lua` (`wifi.connect(...)`) в прошивке с Lua. В прошивке без Lua (`-DH723_WITH_LUA=OFF`)
+имя и пароль нужно задать здесь.
 
 ```bash
 cmake --preset Release -DH723_RECIPES="wifi_http"

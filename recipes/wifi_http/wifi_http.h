@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // Точка доступа Wi-Fi. Пустая строка — рецепт сам не подключается и ждёт,
-// пока это сделает кто-то другой (например, /SD/boot.lua).
+// пока это сделает кто-то другой (/SD/boot.lua в прошивке с Lua). Без Lua — задать здесь.
 #ifndef WIFI_HTTP_SSID
 #define WIFI_HTTP_SSID ""
 #endif

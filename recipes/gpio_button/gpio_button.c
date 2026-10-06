@@ -84,7 +84,7 @@ void gpio_button_start(void)
                              taskStack, &taskTcb);
 
     // CubeMX настроил PC13 простым входом — переводим в режим прерывания.
-    // Обработчик EXTI15_10_IRQHandler и HAL_GPIO_EXTI_Callback — в libs/lua/pio/pio.c,
+    // Обработчик EXTI15_10_IRQHandler и HAL_GPIO_EXTI_Callback — в app/exti.c,
     // оттуда прерывание приходит в appGpioExti() выше.
     GPIO_InitTypeDef gpio = {
         .Pin = BUTTON_PIN,
