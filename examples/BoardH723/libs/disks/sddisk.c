@@ -57,6 +57,45 @@ bool sdCardPresent(void)
     return sdCardInsert;
 }
 
+// Ядро SDMMC тактируется от PLL2R = 100 МГц, SDMMC_CK = 100 / (2 * CLKDIV)
+#define SD_CLKDIV_DEFAULT 2 // 25 МГц — предел Default Speed
+#define SD_CLKDIV_HIGH 1    // 50 МГц — High Speed, только после CMD6
+
+static void sdSetClockDiv(uint32_t div)
+{
+    MODIFY_REG(hsd->Instance->CLKCR, SDMMC_CLKCR_CLKDIV, div);
+    hsd->Init.ClockDiv = div;
+}
+
+// Переключает карту в High Speed (CMD6) и шину на 50 МГц. Проверка — чтение
+// сектора 0; если не прошло, остаёмся на 25 МГц (в High Speed карта работает
+// и на меньшей частоте). Возвращает частоту шины в МГц.
+static uint32_t sdTryHighSpeed(void)
+{
+    static uint8_t probe[BLOCKSIZE] __attribute__((aligned(32)));
+    if (HAL_SD_ConfigSpeedBusOperation(hsd, SDMMC_SPEED_MODE_HIGH) != HAL_OK)
+    {
+        hsd->ErrorCode = HAL_SD_ERROR_NONE;
+        return 25;
+    }
+    sdSetClockDiv(SD_CLKDIV_HIGH);
+    bool ok = HAL_SD_ReadBlocks(hsd, probe, 0, 1, 1000) == HAL_OK;
+    uint32_t t = HAL_GetTick();
+    while (ok && HAL_SD_GetCardState(hsd) != HAL_SD_CARD_TRANSFER)
+    {
+        if (HAL_GetTick() - t > 1000)
+            ok = false;
+    }
+    if (!ok)
+    {
+        WRN("SD: 50 MHz read failed, error 0x%08lx, back to 25 MHz\n", hsd->ErrorCode);
+        hsd->ErrorCode = HAL_SD_ERROR_NONE;
+        sdSetClockDiv(SD_CLKDIV_DEFAULT);
+        return 25;
+    }
+    return 50;
+}
+
 void sdCardDetectLoop(void)
 {
     if (HAL_GPIO_ReadPin(SD_DET_GPIO_Port, SD_DET_Pin) == GPIO_PIN_RESET && !sdCardInsert)
@@ -72,10 +111,11 @@ void sdCardDetectLoop(void)
             hsd->Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
             hsd->Init.BusWide = widths[i];
             hsd->Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-            hsd->Init.ClockDiv = 4;
+            hsd->Init.ClockDiv = SD_CLKDIV_DEFAULT;
             if (HAL_SD_Init(hsd) == HAL_OK)
             {
-                INF("SD: %d bit bus\n", widths[i] == SDMMC_BUS_WIDE_4B ? 4 : 1);
+                uint32_t mhz = widths[i] == SDMMC_BUS_WIDE_4B ? sdTryHighSpeed() : 25;
+                INF("SD: %d bit bus, %lu MHz\n", widths[i] == SDMMC_BUS_WIDE_4B ? 4 : 1, mhz);
                 sdCardInsert = true;
                 sdDiskMount();
             }

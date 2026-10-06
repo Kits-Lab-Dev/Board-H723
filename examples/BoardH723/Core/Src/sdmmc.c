@@ -69,7 +69,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
   */
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
     PeriphClkInitStruct.PLL2.PLL2M = 5;
-    PeriphClkInitStruct.PLL2.PLL2N = 112;
+    PeriphClkInitStruct.PLL2.PLL2N = 80;
     PeriphClkInitStruct.PLL2.PLL2P = 4;
     PeriphClkInitStruct.PLL2.PLL2Q = 4;
     PeriphClkInitStruct.PLL2.PLL2R = 4;
