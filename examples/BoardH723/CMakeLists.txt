@@ -20,7 +20,6 @@ endif()
 # Set the project name
 set(CMAKE_PROJECT_NAME BoardH723)
 
-# Include toolchain file
 include("BoardH723.cmake")
 
 # Enable compile command to ease indexing with e.g. clangd
