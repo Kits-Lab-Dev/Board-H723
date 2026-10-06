@@ -54,7 +54,10 @@
 #define WOLFSSH_MAX_SFTP_RECV 2048
 #define DEFAULT_MAX_PACKET_SZ 2048
 #define MAX_PACKET_SZ 4096
-#define DEFAULT_WINDOW_SZ 16384
+/* Окно канала SSH: клиент шлёт не больше окна и ждёт подтверждения, поэтому
+ * запись по SFTP растёт с окном (16 КБ — 65 КБ/с, 64 КБ — 210 КБ/с). Буфер окна
+ * лежит в куче FreeRTOS: 256 КБ уже не помещается. */
+#define DEFAULT_WINDOW_SZ (64 * 1024)
 
 #include "sys/errno.h"
 #include "dirent.h"

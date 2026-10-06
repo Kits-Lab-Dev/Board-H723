@@ -23,17 +23,17 @@ static xSemaphoreHandle wSem = NULL;
 static xSemaphoreHandle mutex = NULL;
 
 static bool isMounted = false;
-static uint8_t wblock[SD_DEFAULT_BLOCK_SIZE] __attribute__((section(".spi_buf_section")));
-static uint8_t rblock[SD_DEFAULT_BLOCK_SIZE] __attribute__((section(".spi_buf_section")));
 
-// DMA работает только с rblock/wblock, поэтому FATFS может лежать в обычной памяти
+// Буфер DMA в SDRAM: до SD_DMA_SECTORS секторов за одну команду (CMD18/CMD25),
+// а не по одному сектору — запись так быстрее в разы. SDRAM кэшируется
+// (write-back), поэтому перед записью кэш сбрасывается, при чтении — инвалидируется.
+// Буфер выровнен по строке кэша (32 байта), чтобы не задеть соседние данные.
+#define SD_DMA_SECTORS 64
+#define SD_DMA_BUF_SIZE (SD_DMA_SECTORS * SD_DEFAULT_BLOCK_SIZE)
+static uint8_t *dmabuf = NULL;
+
+// DMA работает только с dmabuf, поэтому FATFS может лежать в обычной памяти
 FATFS sdfs;
-
-#define ENABLE_SD_DMA_CACHE_MAINTENANCE 1
-
-#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
-uint32_t alignedAddr;
-#endif
 
 static void txCmplt(SD_HandleTypeDef *)
 {
@@ -45,6 +45,13 @@ static void rxCmplt(SD_HandleTypeDef *)
     xSemaphoreGiveFromISR(rSem, NULL);
 }
 
+// Ошибка передачи: будим ожидающего сразу, а не через SD_TIMEOUT
+static void errCmplt(SD_HandleTypeDef *)
+{
+    xSemaphoreGiveFromISR(rSem, NULL);
+    xSemaphoreGiveFromISR(wSem, NULL);
+}
+
 bool sdCardPresent(void)
 {
     return sdCardInsert;
@@ -54,18 +61,30 @@ void sdCardDetectLoop(void)
 {
     if (HAL_GPIO_ReadPin(SD_DET_GPIO_Port, SD_DET_Pin) == GPIO_PIN_RESET && !sdCardInsert)
     {
-        hsd->Instance = SDMMC2;
-        hsd->Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-        hsd->Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-        hsd->Init.BusWide = SDMMC_BUS_WIDE_1B;
-        hsd->Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-        hsd->Init.ClockDiv = 4;
-        // HAL_SD_Init сам переключает шину на Init.BusWide; повторный
-        // HAL_SD_ConfigWideBusOperation читает SCR уже в 4-битном режиме и зависает
-        if (HAL_SD_Init(hsd) == HAL_OK)
+        // Сначала 4 бита; если карта или пайка D1–D3 не тянут — 1 бит.
+        // HAL_SD_Init сам переключает шину на Init.BusWide (повторный
+        // HAL_SD_ConfigWideBusOperation читает SCR уже в 4-битном режиме и зависает)
+        static const uint32_t widths[] = {SDMMC_BUS_WIDE_4B, SDMMC_BUS_WIDE_1B};
+        for (size_t i = 0; i < sizeof(widths) / sizeof(widths[0]) && !sdCardInsert; i++)
         {
-            sdCardInsert = true;
-            sdDiskMount();
+            hsd->Instance = SDMMC2;
+            hsd->Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+            hsd->Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+            hsd->Init.BusWide = widths[i];
+            hsd->Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+            hsd->Init.ClockDiv = 4;
+            if (HAL_SD_Init(hsd) == HAL_OK)
+            {
+                INF("SD: %d bit bus\n", widths[i] == SDMMC_BUS_WIDE_4B ? 4 : 1);
+                sdCardInsert = true;
+                sdDiskMount();
+            }
+            else
+            {
+                WRN("SD: %d bit init failed, error 0x%08lx\n",
+                    widths[i] == SDMMC_BUS_WIDE_4B ? 4 : 1, hsd->ErrorCode);
+                HAL_SD_DeInit(hsd);
+            }
         }
     }
     else if (HAL_GPIO_ReadPin(SD_DET_GPIO_Port, SD_DET_Pin) == GPIO_PIN_SET && sdCardInsert)
@@ -126,8 +145,16 @@ DSTATUS sdDiskInitialize()
             {
                 mutex = xSemaphoreCreateMutex();
             }
+            if (dmabuf == NULL)
+            {
+                uint8_t *p = sdramMalloc(SD_DMA_BUF_SIZE + 32);
+                if (p != NULL)
+                {
+                    dmabuf = (uint8_t *)(((uint32_t)p + 31) & ~31UL);
+                }
+            }
 
-            if (rSem == NULL || wSem == NULL || mutex == NULL)
+            if (rSem == NULL || wSem == NULL || mutex == NULL || dmabuf == NULL)
             {
                 Stat |= STA_NOINIT;
             }
@@ -149,6 +176,7 @@ DSTATUS sdDiskStatus()
     return Stat;
 }
 
+// Ждёт, пока карта вернётся в TRANSFER (после записи она занята программированием)
 static int sdDiskStatusWithTimeout(uint32_t timeout)
 {
     uint32_t timer;
@@ -160,95 +188,68 @@ static int sdDiskStatusWithTimeout(uint32_t timeout)
         {
             return 0;
         }
+        vTaskDelay(1);
     }
     return -1;
 }
-bool readSD(const uint8_t *buff, uint32_t sector, uint32_t count)
-{
-    uint8_t ret;
-    bool res = false;
-    uint32_t timer;
-    HAL_SD_RegisterCallback(hsd, HAL_SD_RX_CPLT_CB_ID, rxCmplt);
-    ret = HAL_SD_ReadBlocks_DMA(hsd, (uint8_t *)buff, (uint32_t)(sector), count);
-    if (ret == HAL_OK)
-    {
-        if (xSemaphoreTake(rSem, SD_TIMEOUT) == pdTRUE)
-        {
-            timer = xTaskGetTickCount();
-            /* block until SDIO IP is ready or a timeout occur */
-            while (xTaskGetTickCount() - timer < SD_TIMEOUT)
-            {
-                if (sdDiskStatus() != STA_NOINIT)
-                {
-                    res = true;
-#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
 
-                    alignedAddr = (uint32_t)buff & ~0x1F;
-                    SCB_InvalidateDCache_by_Addr((uint32_t *)alignedAddr, count * BLOCKSIZE + ((uint32_t)buff - alignedAddr));
-#endif
-                    break;
-                }
-            }
-        }
-    }
-    return res;
+static bool readSD(uint8_t *buff, uint32_t sector, uint32_t count)
+{
+    uint32_t size = count * BLOCKSIZE;
+    xSemaphoreTake(rSem, 0);
+    // грязные строки кэша могли бы вытесниться поверх данных DMA
+    SCB_CleanInvalidateDCache_by_Addr((uint32_t *)buff, size);
+    hsd->ErrorCode = HAL_SD_ERROR_NONE;
+    if (HAL_SD_ReadBlocks_DMA(hsd, buff, sector, count) != HAL_OK)
+        return false;
+    if (xSemaphoreTake(rSem, SD_TIMEOUT) != pdTRUE || hsd->ErrorCode != HAL_SD_ERROR_NONE)
+        return false;
+    SCB_InvalidateDCache_by_Addr((uint32_t *)buff, size);
+    return sdDiskStatusWithTimeout(SD_TIMEOUT) == 0;
+}
+
+static bool writeSD(uint8_t *buff, uint32_t sector, uint32_t count)
+{
+    xSemaphoreTake(wSem, 0);
+    SCB_CleanDCache_by_Addr((uint32_t *)buff, count * BLOCKSIZE);
+    hsd->ErrorCode = HAL_SD_ERROR_NONE;
+    if (HAL_SD_WriteBlocks_DMA(hsd, buff, sector, count) != HAL_OK)
+        return false;
+    if (xSemaphoreTake(wSem, SD_TIMEOUT) != pdTRUE || hsd->ErrorCode != HAL_SD_ERROR_NONE)
+        return false;
+    return sdDiskStatusWithTimeout(SD_TIMEOUT) == 0;
+}
+
+static void sdRegisterCallbacks(void)
+{
+    HAL_SD_RegisterCallback(hsd, HAL_SD_RX_CPLT_CB_ID, rxCmplt);
+    HAL_SD_RegisterCallback(hsd, HAL_SD_TX_CPLT_CB_ID, txCmplt);
+    HAL_SD_RegisterCallback(hsd, HAL_SD_ERROR_CB_ID, errCmplt);
 }
 
 DSTATUS sdDiskRead(BYTE *buff, DWORD sector, UINT count)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
     DRESULT res = RES_ERROR;
-    if (sdDiskStatusWithTimeout(SD_TIMEOUT) < 0)
+    if (sdDiskStatusWithTimeout(SD_TIMEOUT) == 0)
     {
-        xSemaphoreGive(mutex);
-        return res;
-    }
-
-    // if (IS_ADDR(buff) != RAM_D1_ADDR && IS_ADDR(buff) != RAM_D2_ADDR && IS_ADDR(buff) != RAM_D3_ADDR)
-    // {
-        BYTE* b = buff;
+        sdRegisterCallbacks();
         res = RES_OK;
-        for (uint32_t i = 0; i < count; i++)
+        while (count > 0)
         {
-            if (!readSD(rblock, sector++, 1))
+            uint32_t n = count < SD_DMA_SECTORS ? count : SD_DMA_SECTORS;
+            if (!readSD(dmabuf, sector, n))
             {
                 res = RES_ERROR;
                 break;
             }
-            memcpy(b, rblock, BLOCKSIZE);
-            b += BLOCKSIZE;
-        }
-    // }
-    // else
-    // {
-    //     if (readSD(buff, sector, count))
-    //         res = RES_OK;
-    // }
-    xSemaphoreGive(mutex);
-    return res;
-}
-
-bool writeSD(const uint8_t *buff, uint32_t sector, uint32_t count)
-{
-    uint32_t timer;
-    bool res = false;
-    HAL_SD_RegisterCallback(hsd, HAL_SD_TX_CPLT_CB_ID, txCmplt);
-    if (HAL_SD_WriteBlocks_DMA(hsd, buff, (uint32_t)(sector), count) == HAL_OK)
-    {
-        if (xSemaphoreTake(wSem, SD_TIMEOUT) == pdTRUE)
-        {
-            timer = xTaskGetTickCount();
-            /* block until SDIO IP is ready or a timeout occur */
-            while (xTaskGetTickCount() - timer < SD_TIMEOUT)
-            {
-                if (sdDiskStatus() != STA_NOINIT)
-                {
-                    res = true;
-                    break;
-                }
-            }
+            memcpy(buff, dmabuf, n * BLOCKSIZE);
+            buff += n * BLOCKSIZE;
+            sector += n;
+            count -= n;
         }
     }
+    xSemaphoreGive(mutex);
     return res;
 }
 
@@ -256,42 +257,24 @@ DSTATUS sdDiskWrite(const BYTE *buff, DWORD sector, UINT count)
 {
     xSemaphoreTake(mutex, portMAX_DELAY);
     DRESULT res = RES_ERROR;
-    if (sdDiskStatusWithTimeout(SD_TIMEOUT) < 0)
+    if (sdDiskStatusWithTimeout(SD_TIMEOUT) == 0)
     {
-        xSemaphoreGive(mutex);
-        return res;
-    }
-
-    // if (IS_ADDR(buff) != RAM_D1_ADDR && IS_ADDR(buff) != RAM_D2_ADDR && IS_ADDR(buff) != RAM_D3_ADDR)
-    // {
-        BYTE* b = (BYTE*)buff;
+        sdRegisterCallbacks();
         res = RES_OK;
-        for (uint32_t i = 0; i < count; i++)
+        while (count > 0)
         {
-            memcpy((void *)wblock, b, BLOCKSIZE);
-#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
-            uint32_t alignedAddr;
-            alignedAddr = (uint32_t)b & ~0x1F;
-            SCB_CleanDCache_by_Addr((uint32_t *)alignedAddr, BLOCKSIZE + ((uint32_t)b - alignedAddr));
-#endif
-            b += BLOCKSIZE;
-            if (!writeSD(wblock, sector++, 1))
+            uint32_t n = count < SD_DMA_SECTORS ? count : SD_DMA_SECTORS;
+            memcpy(dmabuf, buff, n * BLOCKSIZE);
+            if (!writeSD(dmabuf, sector, n))
             {
                 res = RES_ERROR;
                 break;
             }
+            buff += n * BLOCKSIZE;
+            sector += n;
+            count -= n;
         }
-    // }
-    // else
-    // {
-#if (ENABLE_SD_DMA_CACHE_MAINTENANCE == 1)
-        // uint32_t alignedAddr;
-        // alignedAddr = (uint32_t)buff & ~0x1F;
-        // SCB_CleanDCache_by_Addr((uint32_t *)alignedAddr, count * BLOCKSIZE + ((uint32_t)buff - alignedAddr));
-#endif
-    //     if (writeSD(buff, sector, count))
-    //         res = RES_OK;
-    // }
+    }
     xSemaphoreGive(mutex);
     return res;
 }
