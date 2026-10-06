@@ -37,6 +37,9 @@ cmake --preset Release
 cmake --build build/Release
 ```
 
+На Windows клонируй в короткий путь (вроде `C:\src\Board-H723`): при длинном CMake
+предупреждает о пределе 250 символов на путь объектного файла.
+
 Результат — `build/Release/BoardH723.elf` / `.hex` / `.bin` (ELF с отладочной информацией).
 Опции: `-DH723_WITH_SSH=OFF` убирает SSH/SFTP (wolfSSH под GPLv3 — с ним вся прошивка GPLv3),
 `-DH723_WITH_TLS=OFF` убирает HTTPS для Lua. Предупреждения `implicit declaration` в сборке — известные,
