@@ -1,8 +1,8 @@
 const char *mainlua = " \
 local rtos = require 'rtos' \
 local thread = require 'thread' \
-local b = require 'boot'\r\n  \
 function boot() \r\n  \
+    local b = require 'boot'\r\n  \
     print('booting...')\r\n  \
     b.boot();\r\n  \
 end \r\n \

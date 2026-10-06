@@ -68,6 +68,8 @@ void luaTask(void *)
         L = luaInit();
         luaRun(L, mainlua);
         luaDeinit(L);
+        // ошибка в mainlua — не перезапускать в холостом цикле
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 #endif
