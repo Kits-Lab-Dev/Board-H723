@@ -32,7 +32,8 @@
 #define BOOTLOADER_PATH "/SD/utils/ESPLoader.bin"
 /* Системный загрузчик STM32H723 (USB DFU, UART) в ROM — AN2606 */
 #define SYSTEM_BOOTLOADER_ADDRESS 0x1FF09800
-/* UDP-пакет "dfu" на этот порт из USB-сети — перезагрузка в DFU без кнопки BOOT */
+/* UDP-пакет на этот порт из USB-сети: "dfu" — перезагрузка в DFU без кнопки BOOT,
+ * "esploader" — запуск ESP-Loader для прошивки ESP32-C2 */
 #define DFU_UDP_PORT 7123
 
 #define HOSTNAME "MCU"
@@ -160,17 +161,25 @@ static void checkDFURequest()
 {
     if (!dfuSocket)
         return;
-    char buf[8];
+    char buf[16];
     struct freertos_sockaddr from;
     socklen_t fromLen = sizeof(from);
     int32_t n = FreeRTOS_recvfrom(dfuSocket, buf, sizeof(buf), FREERTOS_MSG_DONTWAIT, &from, &fromLen);
-    if (n < 3 || memcmp(buf, "dfu", 3) != 0)
+    bool dfu = n >= 3 && memcmp(buf, "dfu", 3) == 0;
+    bool esp = n >= 9 && memcmp(buf, "esploader", 9) == 0;
+    if (!dfu && !esp)
         return;
     uint32_t mask = ncmNetEndPoint.ipv4_settings.ulNetMask;
     if ((from.sin_address.ulIP_IPv4 & mask) != (ncmNetEndPoint.ipv4_settings.ulIPAddress & mask))
         return;
-    WRN("DFU request, rebooting to system bootloader\n");
     FreeRTOS_sendto(dfuSocket, "ok\n", 3, 0, &from, fromLen);
+    if (esp)
+    {
+        // ESP-Loader с SD: прошивка ESP32-C2 по USB (как reboot esploader в SSH)
+        appStartEspLoader();
+        return;
+    }
+    WRN("DFU request, rebooting to system bootloader\n");
     vTaskDelay(100);
     rebootToDFU();
 }

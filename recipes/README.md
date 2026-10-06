@@ -10,6 +10,7 @@
 | [uart_dma](uart_dma/README.md) | приём UART через DMA в кольцевой буфер, команды из терминала |
 | [i2c_bme280](i2c_bme280/README.md) | сканер шины I2C, датчик BME280/BMP280: температура, давление, влажность |
 | [wifi_http](wifi_http/README.md) | подключение к Wi-Fi, HTTP GET на сокетах FreeRTOS+TCP |
+| [tcp_speed](tcp_speed/README.md) | скорость TCP по Wi-Fi: окна TCP, энергосбережение, клиент для ПК |
 | [sd_file](sd_file/README.md) | дозапись в файл на SD, замер скорости записи и чтения |
 | [rtos_queue](rtos_queue/README.md) | две задачи FreeRTOS и очередь между ними |
 | [lcd_ltdc](lcd_ltdc/README.md) | дисплей RGB 800×480: LTDC, DMA2D, двойной буфер в SDRAM, картинка с SD |
@@ -32,7 +33,8 @@ CMake добавляет в сборку все `.c` из папок рецеп�
 `-DH723_RECIPES=""`.
 
 Рецепты не зависят от Lua и работают в прошивке без него (`-DH723_WITH_LUA=OFF`); только
-`wifi_http` тогда подключается к сети сам — имя и пароль задаются в `wifi_http.h`.
+`wifi_http` и `tcp_speed` тогда подключаются к сети сами — имя и пароль задаются в
+`wifi_http.h` и опциями `-DTCP_SPEED_SSID`/`-DTCP_SPEED_PASSWORD`.
 `lcd_ltdc` и `lvgl_demo` выводят на один дисплей — вместе их не включают.
 
 Вывод рецептов — в лог USART1 115200 (PB14, на разъёме отладчика J6 и на J2).

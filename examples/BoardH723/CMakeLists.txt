@@ -42,6 +42,14 @@ endif()
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
 set(FREERTOS_DIR ${THIRD_PARTY}/FreeRTOS-Kernel)
 set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
+
+# FreeRTOS+TCP откладывает ACK на полный сегмент до 20 мс: при приёме потока отправитель
+# ждёт подтверждений, и скорость упирается в окно / 20 мс (около 18 Мбит/с при 46 КБ).
+# Ждать столько же, сколько для коротких сегментов, — 2 мс
+include(${CMAKE_SOURCE_DIR}/cmake/patch_source.cmake)
+patch_source(${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission.c ${CMAKE_BINARY_DIR}/patched/FreeRTOS_TCP_Transmission.c
+    FIND "pdMS_TO_TICKS( tcpDELAYED_ACK_LONGER_DELAY_MS )"
+    REPLACE "pdMS_TO_TICKS( tcpDELAYED_ACK_SHORT_DELAY_MS )")
 set(WOLFSSL_DIR ${THIRD_PARTY}/wolfssl)
 set(WOLFSSH_DIR ${THIRD_PARTY}/wolfssh)
 set(MBEDTLS_DIR ${THIRD_PARTY}/mbedtls)
@@ -235,7 +243,7 @@ target_sources(${CMAKE_PROJECT_NAME} PUBLIC
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling.c
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling_IPv4.c
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_State_Handling_IPv6.c
-    ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission.c
+    ${CMAKE_BINARY_DIR}/patched/FreeRTOS_TCP_Transmission.c
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission_IPv4.c
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission_IPv6.c
     ${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Utils.c

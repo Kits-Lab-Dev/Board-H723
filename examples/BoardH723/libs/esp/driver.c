@@ -70,6 +70,7 @@ static QueueHandle_t transactionQueue;
 static SemaphoreHandle_t txCmpltSem;
 
 static void transactionTask(void *pvParameters);
+
 bool spiTransaction(uint8_t *tx);
 
 static void spiDMAInit(void)
@@ -167,39 +168,37 @@ static void transactionTask(void *pvParameters)
     UNUSED(pvParameters);
 
     p_spi_buf buf;
-    GPIO_PinState gpio_handshake = GPIO_PIN_RESET;
-    GPIO_PinState gpio_rx_data_ready = GPIO_PIN_RESET;
 
     for (;;)
     {
-        if (xSemaphoreTake(transactionSem, portMAX_DELAY) == pdTRUE)
+        // Уровни, а не только фронты: пока ESP готова (handshake) и есть что передать
+        // или забрать (data ready), транзакции идут подряд без сна
+        bool handshake = HAL_GPIO_ReadPin(ESP_HANDSHAKE_GPIO_Port, ESP_HANDSHAKE_Pin) == GPIO_PIN_SET;
+        bool dataReady = HAL_GPIO_ReadPin(ESP_DATA_READY_GPIO_Port, ESP_DATA_READY_Pin) == GPIO_PIN_SET;
+        if (handshake && (dataReady || uxQueueMessagesWaiting(transactionQueue) > 0))
         {
-            gpio_handshake = HAL_GPIO_ReadPin(ESP_HANDSHAKE_GPIO_Port, ESP_HANDSHAKE_Pin);
-            gpio_rx_data_ready = HAL_GPIO_ReadPin(ESP_DATA_READY_GPIO_Port, ESP_DATA_READY_Pin);
-            if (gpio_handshake == GPIO_PIN_SET)
+            if (xQueueReceive(transactionQueue, &buf, 0) == pdTRUE && buf.data && buf.len)
             {
-                if (xQueueReceive(transactionQueue, &buf, 0) == pdTRUE)
+                spi_buf *tx = (spi_buf *)txbuff;
+                memcpy(tx->data, buf.data, buf.len);
+                tx->len = buf.len;
+                tx->type = buf.type;
+
+                if (buf.free_data_fn && buf.is_released)
                 {
-                    if (buf.data && buf.len)
-                    {
-                        spi_buf *tx = (spi_buf *)txbuff;
-                        memcpy(tx->data, buf.data, buf.len);
-                        tx->len = buf.len;
-                        tx->type = buf.type;
-
-                        if (buf.free_data_fn && buf.is_released)
-                        {
-                            buf.free_data_fn(buf.data);
-                        }
-
-                        spiTransaction(txbuff);
-                        continue;
-                    }
+                    buf.free_data_fn(buf.data);
                 }
-                if (gpio_rx_data_ready == GPIO_PIN_SET)
-                    spiTransaction(NULL);
+
+                spiTransaction(txbuff);
             }
+            else
+            {
+                spiTransaction(NULL);
+            }
+            continue;
         }
+        // Ждать фронта handshake/data ready или нового кадра на отправку
+        xSemaphoreTake(transactionSem, 1);
     }
 }
 
@@ -207,7 +206,10 @@ void ESP_EXTI_Callback()
 {
     if (transactionSem != NULL)
     {
-        xSemaphoreGiveFromISR(transactionSem, pdFALSE);
+        // разбудить transactionTask сразу, а не на следующем тике планировщика
+        BaseType_t woken = pdFALSE;
+        xSemaphoreGiveFromISR(transactionSem, &woken);
+        portYIELD_FROM_ISR(woken);
     }
 }
 
@@ -392,6 +394,8 @@ void SPI5_IRQHandler(void)
         /* Disable Tx DMA Request */
         CLEAR_BIT(hspi->Instance->CFG1, SPI_CFG1_TXDMAEN | SPI_CFG1_RXDMAEN);
 
-        xSemaphoreGiveFromISR(txCmpltSem, NULL);
+        BaseType_t woken = pdFALSE;
+        xSemaphoreGiveFromISR(txCmpltSem, &woken);
+        portYIELD_FROM_ISR(woken);
     }
 }
