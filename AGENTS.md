@@ -16,6 +16,8 @@ SDRAM 32 МБ, microSD, Wi-Fi/BLE на ESP32-C2, USB-C. Основной язы�
   - `config/` — настройки библиотек (FreeRTOSConfig.h, FreeRTOSIPConfig.h, ffconf.h, Mbed TLS, wolfSSL).
   - `cmake/patch_source.cmake` — точечные правки сторонних файлов при сборке.
   - `app/SD/` — содержимое SD-карты (`boot.lua`, библиотеки Lua, `utils/ESPLoader.bin`).
+    Архив для карты — `python tools/make_sd_zip.py` (→ `build/sd-card.zip`, он же в релизах GitHub);
+    распаковать в корень карты FAT32. На живую плату файлы можно залить по SFTP в `/SD/`.
   - `Core/` — код CubeMX (`main.c`, `*_it.c`, инициализация периферии), см. правила ниже.
 - `examples/ESP-Loader/` — мост USB-UART для прошивки ESP32-C2 через STM32.
 - `recipes/` — готовые проверенные модули на C (кнопка, UART+DMA, I2C-датчик, Wi-Fi+HTTP, SD, задачи
@@ -81,8 +83,11 @@ STM32_Programmer_CLI -c port=usb1 -w build/Release/BoardH723.hex -s 0x08000000
 - `ping 192.168.4.1` — плата в USB-сети (ПК получает 192.168.4.2 по DHCP).
 - Лог — USART1 115200 8N1: PB14 (TX) / PB15 (RX), выведены на J6 (VCP Лобзика) и J2.
   Макросы лога — `INF`, `WRN`, `ERR` из `app/log.h`.
-- SSH/SFTP: `ssh root@192.168.4.1` (пароль `123` из `CMakeLists.txt`; если на SD есть
-  `/SD/.ssh/mcu.key.pub` — вход только по этому ключу). Команды оболочки: `help`, `ls`, `cat`, `top`,
+- SSH/SFTP: `ssh root@192.168.4.1`. Пароль — первая строка `/SD/.ssh/password`; файла нет — плата
+  при загрузке создаёт случайный, сохраняет туда и печатает в лог (`SSH: new password for root: ...`).
+  Сменить — записать свой в этот файл (или удалить файл) и перезагрузить. Если на SD есть
+  `/SD/.ssh/mcu.key.pub` — вход только по этому ключу, пароль выключен. Без карты войти нельзя.
+  Пароль не знаешь и лога нет — спроси человека, он прочитает файл с карты. Команды оболочки: `help`, `ls`, `cat`, `top`,
   `ip`, `reboot`, `reboot dfu`, `reboot esploader`, `lua -f /SD/x.lua`. Оболочка режет аргументы по пробелам и не понимает
   кавычки — Lua запускай файлом.
 

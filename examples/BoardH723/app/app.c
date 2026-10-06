@@ -249,6 +249,12 @@ void appTask(void *)
     {
         f_mkdir("/RAM/.ssh");
     }
+    FILINFO fi;
+    if (f_stat("/SD/boot.lua", &fi) != FR_OK)
+    {
+        WRN("No /SD/boot.lua. SD card content: sd-card.zip from "
+            "https://github.com/Kits-Lab-Dev/Board-H723/releases (unzip to FAT32 card root)\n");
+    }
     xTaskCreateStatic(luaTask, "luaTask", LUA_TASK_STACK_SIZE, NULL, LUA_TASK_PRIORITY, luaTaskStack, &luaTaskBuffer);
 #endif
 

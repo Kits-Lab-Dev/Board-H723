@@ -9,6 +9,7 @@
 #include "ssh_utils.h"
 #include "ssh_sftp.h"
 #include "ssh_shell.h"
+#include "tls_port.h"
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
@@ -307,8 +308,60 @@ static void ServerWorker(void *vArgs)
 #define RAM_ECC_PATH "/RAM/.ssh" \
                      "/hostkey"
 
-static const char samplePasswordBuffer[] =
-    "root:" SSH_PASSWORD "\n";
+#define PASSWORD_PATH SSH_USER_PATH "/password"
+#define PASSWORD_LEN 12
+
+/* Пароль root берётся из /SD/.ssh/password (первая строка). Нет файла — создаём
+ * случайный из аппаратного RNG, записываем в файл и печатаем в лог. Без карты
+ * пароля нет — вход только по ключу. Возвращает длину строки "root:<пароль>\n". */
+static int SSHLoadPassword(byte *buf, word32 bufSz)
+{
+    /* без похожих символов: 0/O, 1/l/I */
+    static const char alphabet[] = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    char pwd[64] = {0};
+
+    FILE *f = fopen(PASSWORD_PATH, "r");
+    if (f != NULL)
+    {
+        if (fgets(pwd, sizeof(pwd), f) == NULL)
+            pwd[0] = 0;
+        fclose(f);
+        pwd[strcspn(pwd, "\r\n")] = 0;
+    }
+
+    if (pwd[0] == 0)
+    {
+        unsigned char rnd[PASSWORD_LEN];
+        if (hw_random(rnd, sizeof(rnd)) != 0)
+            return 0;
+        for (int i = 0; i < PASSWORD_LEN; i++)
+            pwd[i] = alphabet[rnd[i] % (sizeof(alphabet) - 1)];
+        pwd[PASSWORD_LEN] = 0;
+
+        f = fopen(PASSWORD_PATH, "w");
+        if (f == NULL)
+        {
+            WRN("SSH: no SD card, password login disabled\n");
+            return 0;
+        }
+        /* fprintf здесь — макрос лога (wolfSSL.I-CUBE-wolfSSH_conf.h) */
+        int ok = fputs(pwd, f) >= 0 && fputs("\n", f) >= 0;
+        ok = (fclose(f) == 0) && ok;
+        if (!ok)
+        {
+            WRN("SSH: can't write %s, password login disabled\n", PASSWORD_PATH);
+            return 0;
+        }
+        INF("SSH: new password for root: %s (saved to %s)\n", pwd, PASSWORD_PATH);
+    }
+    else
+    {
+        INF("SSH: password for root from %s\n", PASSWORD_PATH);
+    }
+
+    int sz = snprintf((char *)buf, bufSz, "root:%s\n", pwd);
+    return (sz > 0 && (word32)sz < bufSz) ? sz : 0;
+}
 
 #ifdef WOLFSSH_ALLOW_USERAUTH_NONE
 
@@ -558,10 +611,9 @@ static void ServerTask(void *)
 
     if (!pubKeyLoaded)
     {
-        bufSz = (word32)WSTRLEN(samplePasswordBuffer);
-        WMEMCPY(keyLoadBuf, samplePasswordBuffer, bufSz);
-        keyLoadBuf[bufSz] = 0;
-        LoadPasswordBuffer(keyLoadBuf, bufSz, &pwMapList);
+        bufSz = SSHLoadPassword(keyLoadBuf, LOAD_FILE_BUFFER_SZ);
+        if (bufSz > 0)
+            LoadPasswordBuffer(keyLoadBuf, bufSz, &pwMapList);
     }
 
 #ifdef WOLFSSH_CERTS

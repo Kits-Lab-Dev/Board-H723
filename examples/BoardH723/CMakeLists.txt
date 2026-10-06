@@ -121,7 +121,6 @@ add_compile_definitions(
     calloc=pvPortCalloc 
 
     # SSH_SERVER_STACK_SDRAM
-    SSH_PASSWORD="123"
     SSH_BUFFER_SIZE=4096
 
     WITH_LUA
