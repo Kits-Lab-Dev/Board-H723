@@ -24,12 +24,16 @@ static xSemaphoreHandle mutex = NULL;
 
 static bool isMounted = false;
 
-// Буфер DMA в SDRAM: до SD_DMA_SECTORS секторов за одну команду (CMD18/CMD25),
-// а не по одному сектору — запись так быстрее в разы. SDRAM кэшируется
-// (write-back), поэтому перед записью кэш сбрасывается, при чтении — инвалидируется.
-// Буфер выровнен по строке кэша (32 байта), чтобы не задеть соседние данные.
+// Буфер DMA: до SD_DMA_SECTORS секторов за одну команду (CMD18/CMD25), а не по
+// одному сектору — запись так быстрее в разы. Лежит в AXI SRAM (куча FreeRTOS), не в
+// SDRAM: шину SDRAM делят LTDC, DMA2D и процессор, и SDMMC на 50 МГц не успевал
+// получить данные (TX underrun, 0x10) или отдать их (RX overrun, 0x20).
+// Память кэшируется (write-back), поэтому перед записью кэш сбрасывается, при чтении —
+// инвалидируется. Буфер выровнен по строке кэша (32 байта), чтобы не задеть соседние данные.
 #define SD_DMA_SECTORS 64
 #define SD_DMA_BUF_SIZE (SD_DMA_SECTORS * SD_DEFAULT_BLOCK_SIZE)
+// Сбой обмена (помеха, перегрузка шины) — повторить блок
+#define SD_RETRIES 3
 static uint8_t *dmabuf = NULL;
 
 // DMA работает только с dmabuf, поэтому FATFS может лежать в обычной памяти
@@ -192,7 +196,7 @@ DSTATUS sdDiskInitialize()
             }
             if (dmabuf == NULL)
             {
-                uint8_t *p = sdramMalloc(SD_DMA_BUF_SIZE + 32);
+                uint8_t *p = pvPortMalloc(SD_DMA_BUF_SIZE + 32);
                 if (p != NULL)
                 {
                     dmabuf = (uint8_t *)(((uint32_t)p + 31) & ~31UL);
@@ -246,9 +250,15 @@ static bool readSD(uint8_t *buff, uint32_t sector, uint32_t count)
     SCB_CleanInvalidateDCache_by_Addr((uint32_t *)buff, size);
     hsd->ErrorCode = HAL_SD_ERROR_NONE;
     if (HAL_SD_ReadBlocks_DMA(hsd, buff, sector, count) != HAL_OK)
+    {
+        WRN("SD: read start failed, sector %lu, error 0x%08lx\n", sector, hsd->ErrorCode);
         return false;
+    }
     if (xSemaphoreTake(rSem, SD_TIMEOUT) != pdTRUE || hsd->ErrorCode != HAL_SD_ERROR_NONE)
+    {
+        WRN("SD: read failed, sector %lu x %lu, error 0x%08lx\n", sector, count, hsd->ErrorCode);
         return false;
+    }
     SCB_InvalidateDCache_by_Addr((uint32_t *)buff, size);
     return sdDiskStatusWithTimeout(SD_TIMEOUT) == 0;
 }
@@ -259,9 +269,15 @@ static bool writeSD(uint8_t *buff, uint32_t sector, uint32_t count)
     SCB_CleanDCache_by_Addr((uint32_t *)buff, count * BLOCKSIZE);
     hsd->ErrorCode = HAL_SD_ERROR_NONE;
     if (HAL_SD_WriteBlocks_DMA(hsd, buff, sector, count) != HAL_OK)
+    {
+        WRN("SD: write start failed, sector %lu, error 0x%08lx\n", sector, hsd->ErrorCode);
         return false;
+    }
     if (xSemaphoreTake(wSem, SD_TIMEOUT) != pdTRUE || hsd->ErrorCode != HAL_SD_ERROR_NONE)
+    {
+        WRN("SD: write failed, sector %lu x %lu, error 0x%08lx\n", sector, count, hsd->ErrorCode);
         return false;
+    }
     return sdDiskStatusWithTimeout(SD_TIMEOUT) == 0;
 }
 
@@ -283,7 +299,10 @@ DSTATUS sdDiskRead(BYTE *buff, DWORD sector, UINT count)
         while (count > 0)
         {
             uint32_t n = count < SD_DMA_SECTORS ? count : SD_DMA_SECTORS;
-            if (!readSD(dmabuf, sector, n))
+            int tries = SD_RETRIES;
+            while (!readSD(dmabuf, sector, n) && --tries > 0)
+                sdDiskStatusWithTimeout(SD_TIMEOUT);
+            if (tries == 0)
             {
                 res = RES_ERROR;
                 break;
@@ -310,7 +329,10 @@ DSTATUS sdDiskWrite(const BYTE *buff, DWORD sector, UINT count)
         {
             uint32_t n = count < SD_DMA_SECTORS ? count : SD_DMA_SECTORS;
             memcpy(dmabuf, buff, n * BLOCKSIZE);
-            if (!writeSD(dmabuf, sector, n))
+            int tries = SD_RETRIES;
+            while (!writeSD(dmabuf, sector, n) && --tries > 0)
+                sdDiskStatusWithTimeout(SD_TIMEOUT);
+            if (tries == 0)
             {
                 res = RES_ERROR;
                 break;

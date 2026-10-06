@@ -8,7 +8,8 @@
 - STM32H723ZGT6, LQFP144: Cortex-M7, Flash 1 МБ, ОЗУ 564 КБ, кэш I/D по 32 КБ.
 - HSE 25 МГц, LSE 32,768 кГц (RTC).
 - PLL1: 25 / 5 × 110 = 550 МГц — ядро (SYSCLK). HCLK 275 МГц, APB1–APB4 137,5 МГц.
-- Ядра периферии: FMC 275 МГц, SPI1–5 125 МГц, ADC 125 МГц, SDMMC 100 МГц (PLL2), USB 48 МГц (HSI48).
+- Ядра периферии: FMC 275 МГц, SPI1–5 125 МГц (PLL3Q), ADC и LTDC 25 МГц (PLL3R), SDMMC 100 МГц (PLL2),
+  USB 48 МГц (HSI48).
 - Таймбаза HAL — TIM7 (SysTick занят FreeRTOS).
 
 ## Память
@@ -18,12 +19,14 @@
 | ITCM | 0x00000000 | 64 КБ | ~41 КБ: стек `appTask` и другие статические буферы (`__ITCMRAM`); адрес 0 закрыт — ловит обращение по NULL |
 | DTCM | 0x20000000 | 128 КБ | `.data` + `.bss` (~83 КБ), стек прерываний |
 | Flash | 0x08000000 | 1 МБ | прошивка: ~805 КБ со всем, 629 КБ без SSH, 530 КБ без SSH и TLS |
-| RAM_D1 (AXI) | 0x24000000 | 320 КБ | целиком куча FreeRTOS (`configTOTAL_HEAP_SIZE`), занята на 100 % |
+| RAM_D1 (AXI) | 0x24000000 | 320 КБ | целиком куча FreeRTOS (`configTOTAL_HEAP_SIZE`); в работе занято ~150 КБ (сеть, SSH-сессия, буфер SD 32 КБ) — `top` в SSH |
 | RAM_D2 | 0x30000000 | 32 КБ | сетевые буферы FreeRTOS+TCP (`ucNetworkPackets`), занята на ~98 % |
 | RAM_D3 | 0x38000000 | 16 КБ | буферы SPI-обмена с ESP32-C2 и пулы NimBLE, занята на ~90 % |
 | SDRAM | 0xC0000000 | 32 МБ | MT48LC16M16A2 через FMC (16 бит): `sdramMalloc()` (lwmem), RAM-диск `/RAM` 4 МБ, Lua |
 
-Новые большие буферы — в SDRAM через `sdramMalloc()`, во внутренних ОЗУ места почти нет.
+Новые большие буферы — в SDRAM через `sdramMalloc()`. Буферы DMA, которым важна задержка
+(SD-карта, быстрый UART), лучше в куче FreeRTOS (`pvPortMalloc`, AXI SRAM): шину SDRAM делят
+LTDC, DMA2D и процессор, и периферия может не успеть получить или отдать данные.
 MPU: SDRAM — кэшируемая, **не Shareable** (иначе FMC отдаёт мусор при невыровненном
 чтении). Если DMA пишет в кэшируемую память, нужны `SCB_CleanDCache_by_Addr` /
 `SCB_InvalidateDCache_by_Addr`.
