@@ -351,9 +351,58 @@ void app() // адрес 0 в ITCMRAM закрыт секцией .itcm_null_gua
 }
 
 volatile float CPU_IDLE = 0;
-void vApplicationIdleHook(void)
+
+#ifdef IDLE_SLEEP
+/* Сон в простое (-DH723_IDLE_SLEEP=ON): WFI останавливает ядро до ближайшего прерывания
+ * (тик FreeRTOS, сеть, USB), периферия работает. Загрузка — по счётчику тактов DWT:
+ * за секунду ядро бодрствовало столько-то тактов из SystemCoreClock. Спит ли при этом
+ * сам счётчик, зависит от ядра, поэтому время сна вычитается отдельно. */
+static void idleLoad(void)
 {
-    static portTickType LastTick;
+    static bool init;
+    static uint32_t c0, slept;
+    static TickType_t t0;
+    if (!init)
+    {
+        init = true;
+        CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+        DWT->LAR = 0xC5ACCE55; // на Cortex-M7 регистры DWT без этого ключа не пишутся
+        DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+        // USB OTG_HS работает со встроенным PHY. Если во сне оставить такт внешнего
+        // ULPI-PHY (его на плате нет, по умолчанию такт включён), USB замирает
+        __HAL_RCC_USB1_OTG_HS_ULPI_CLK_SLEEP_DISABLE();
+        c0 = DWT->CYCCNT;
+        t0 = xTaskGetTickCount();
+    }
+
+    // Прерывания запрещены: WFI всё равно проснётся от прерывания, но его обработчик
+    // выполнится после __enable_irq() и не попадёт во время сна
+    __disable_irq();
+    uint32_t s = DWT->CYCCNT;
+    __DSB();
+    __WFI();
+    slept += DWT->CYCCNT - s;
+    __enable_irq();
+
+    TickType_t dt = xTaskGetTickCount() - t0;
+    if (dt >= configTICK_RATE_HZ)
+    {
+        uint32_t c = DWT->CYCCNT;
+        float awake = (float)(c - c0 - slept);
+        float total = (float)SystemCoreClock / configTICK_RATE_HZ * dt;
+        float idle = 100.0f - 100.0f * awake / total;
+        CPU_IDLE = idle < 0 ? 0 : idle;
+        c0 = c;
+        slept = 0;
+        t0 += dt;
+    }
+}
+#else
+/* Без сна: задача простоя крутится и считает свои проходы за секунду; максимум
+ * проходов — это 100 % простоя */
+static void idleLoad(void)
+{
+    static TickType_t LastTick;
     static uint32_t count;
     static uint32_t max_count;
 
@@ -367,6 +416,12 @@ void vApplicationIdleHook(void)
         CPU_IDLE = (100.0f * (float)count) / (float)max_count;
         count = 0;
     }
+}
+#endif
+
+void vApplicationIdleHook(void)
+{
+    idleLoad();
 
     static uint32_t lowPriTick;
     if ((xTaskGetTickCount() - lowPriTick) > 1)

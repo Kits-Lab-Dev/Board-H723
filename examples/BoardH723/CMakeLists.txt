@@ -37,6 +37,8 @@ option(H723_WITH_TLS "Модуль ssl для Lua (HTTPS) на Mbed TLS (Apache-
 if(NOT H723_WITH_LUA)
     set(H723_WITH_TLS OFF) # HTTPS нужен только Lua
 endif()
+# Сон ядра в простое (WFI): меньше ток и нагрев, загрузка процессора считается по тактам ядра
+option(H723_IDLE_SLEEP "Сон ядра командой WFI, когда задачам FreeRTOS нечего делать" OFF)
 
 # Сторонние библиотеки (git submodule): git submodule update --init
 set(THIRD_PARTY ${CMAKE_SOURCE_DIR}/../../third_party)
@@ -138,6 +140,7 @@ add_compile_definitions(
     $<$<BOOL:${H723_WITH_LUA}>:WITH_LUA>
     $<$<BOOL:${H723_WITH_TLS}>:WITH_TLS>
     $<$<BOOL:${H723_WITH_SSH}>:WITH_SSH>
+    $<$<BOOL:${H723_IDLE_SLEEP}>:IDLE_SLEEP>
 )
 
 # Заголовки FreeRTOS, FreeRTOS+TCP и конфиги библиотек — общие для всех целей
