@@ -69,7 +69,10 @@
 #endif
 #define XGMTIME(c, t) gmtime((c))
 
-// #define WMALLOC_USER
+/* Память wolfSSH — в SDRAM: буфер окна 64 КБ на каждый канал в куче FreeRTOS
+ * (320 КБ) не помещается уже для второго соединения, а FileZilla открывает
+ * отдельное соединение под передачу файлов */
+#define WMALLOC_USER
 
 #ifdef WMALLOC_USER
 #include "sdram.h"
