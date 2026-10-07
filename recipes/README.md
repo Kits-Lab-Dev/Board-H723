@@ -15,6 +15,7 @@
 | [rtos_queue](rtos_queue/README.md) | две задачи FreeRTOS и очередь между ними |
 | [lcd_ltdc](lcd_ltdc/README.md) | дисплей RGB 800×480: LTDC, DMA2D, двойной буфер в SDRAM, картинка с SD |
 | [lvgl_demo](lvgl_demo/README.md) | интерфейс на LVGL 9: сенсорный экран GT911, графики, русский шрифт TTF с SD |
+| [lvgl_clock](lvgl_clock/README.md) | часы (NTP) и погода (open-meteo) на LVGL, анимация пузырей; Wi-Fi и город — в файле на SD |
 
 ## Как включить
 
@@ -33,9 +34,9 @@ CMake добавляет в сборку все `.c` из папок рецеп�
 `-DH723_RECIPES=""`.
 
 Рецепты не зависят от Lua и работают в прошивке без него (`-DH723_WITH_LUA=OFF`); только
-`wifi_http` и `tcp_speed` тогда подключаются к сети сами — имя и пароль задаются в
-`wifi_http.h` и опциями `-DTCP_SPEED_SSID`/`-DTCP_SPEED_PASSWORD`.
-`lcd_ltdc` и `lvgl_demo` выводят на один дисплей — вместе их не включают.
+`wifi_http`, `tcp_speed` и `lvgl_clock` тогда подключаются к сети сами — имя и пароль задаются в
+`wifi_http.h`, опциями `-DTCP_SPEED_SSID`/`-DTCP_SPEED_PASSWORD` и в `/SD/clock.ini`.
+`lcd_ltdc`, `lvgl_demo` и `lvgl_clock` выводят на один дисплей — вместе их не включают.
 
 Вывод рецептов — в лог USART1 115200 (PB14, на разъёме отладчика J6 и на J2).
 

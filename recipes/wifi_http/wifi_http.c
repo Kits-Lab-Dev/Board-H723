@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "wifi_http.h"
 #include "app.h"
@@ -64,7 +65,32 @@ static Socket_t httpConnect(const char *host, uint16_t port, int *step)
     return s;
 }
 
-int wifiHttpGet(const char *host, const char *path, wifiHttpResult *res)
+// Тело в виде chunked: "<длина hex>\r\n<данные>\r\n" ... "0\r\n\r\n" — склеить куски на месте
+static size_t dechunk(char *body)
+{
+    char *src = body, *dst = body;
+    for (;;)
+    {
+        char *end;
+        unsigned long n = strtoul(src, &end, 16);
+        char *data = strstr(end, "\r\n");
+        if (n == 0 || data == NULL)
+            break;
+        data += 2;
+        size_t have = strlen(data);
+        if (n > have)
+            n = have; // ответ оборвался посреди куска
+        memmove(dst, data, n);
+        dst += n;
+        src = data + n;
+        if (src[0] == '\r')
+            src += 2;
+    }
+    *dst = '\0';
+    return dst - body;
+}
+
+int wifiHttpGet(const char *host, const char *path, char *buf, size_t size, wifiHttpResult *res)
 {
     memset(res, 0, sizeof(*res));
     TickType_t t0 = xTaskGetTickCount();
@@ -74,73 +100,110 @@ int wifiHttpGet(const char *host, const char *path, wifiHttpResult *res)
         return ret;
 
     // 4. Запрос. "Connection: close" — сервер сам закроет соединение после ответа,
-    // так конец ответа виден без разбора Content-Length и chunked
-    char buf[512];
-    int len = snprintf(buf, sizeof(buf),
+    // так конец ответа виден без разбора Content-Length
+    char tmp[512];
+    int len = snprintf(tmp, sizeof(tmp),
                        "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: BoardH723\r\nConnection: close\r\n\r\n",
                        path, host);
     ret = -4;
-    if (FreeRTOS_send(s, buf, len, 0) != len)
+    if (FreeRTOS_send(s, tmp, len, 0) != len)
         goto out;
 
-    // 5. Ответ: первая строка "HTTP/1.1 200 OK", дальше заголовки и тело
+    // 5. Ответ: первая строка "HTTP/1.1 200 OK", дальше заголовки и тело.
+    // Без буфера вызывающего данные идут во временный и только считаются
+    bool keep = buf != NULL && size > 1;
+    bool overflow = false;
     for (;;)
     {
-        BaseType_t n = FreeRTOS_recv(s, buf, sizeof(buf) - 1, 0);
+        char *dst = keep ? buf + res->bytes : tmp;
+        size_t room = keep ? size - 1 - res->bytes : sizeof(tmp) - 1;
+        if (room == 0)
+        {
+            overflow = true;
+            dst = tmp; // дочитать ответ до конца, чтобы соединение закрылось чисто
+            room = sizeof(tmp) - 1;
+        }
+        BaseType_t n = FreeRTOS_recv(s, dst, room, 0);
         if (n <= 0)
             break; // 0 — таймаут, <0 — сервер закрыл соединение
         if (res->bytes == 0)
         {
-            buf[n] = '\0';
-            sscanf(buf, "HTTP/%*s %d", &res->status);
+            dst[n] = '\0';
+            sscanf(dst, "HTTP/%*s %d", &res->status);
         }
-        res->bytes += n;
+        if (!overflow)
+            res->bytes += n;
     }
     ret = res->status ? 0 : -5;
+
+    // Тело — после пустой строки "\r\n\r\n", которой кончаются заголовки
+    if (keep)
+    {
+        buf[res->bytes] = '\0';
+        char *body = strstr(buf, "\r\n\r\n");
+        if (body)
+        {
+            *body = '\0'; // заголовки — отдельной строкой, для поиска в них
+            body += 4;
+            res->body = body;
+            res->bodyLen = strstr(buf, "chunked") ? dechunk(body) : strlen(body);
+        }
+        if (overflow)
+            ret = -6;
+    }
 
 out:
     // Вежливое закрытие: shutdown, дождаться ответного FIN, потом освободить сокет
     FreeRTOS_shutdown(s, FREERTOS_SHUT_RDWR);
-    for (int i = 0; i < 20 && FreeRTOS_recv(s, buf, sizeof(buf), 0) >= 0; i++)
+    for (int i = 0; i < 20 && FreeRTOS_recv(s, tmp, sizeof(tmp), 0) >= 0; i++)
         vTaskDelay(pdMS_TO_TICKS(50));
     FreeRTOS_closesocket(s);
     res->ms = (xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
     return ret;
 }
 
-static void wifiConnectSta(void)
+bool wifiHttpJoin(const char *ssid, const char *password)
 {
-    if (strlen(WIFI_HTTP_SSID) == 0)
-        return;
+    if (ssid == NULL || ssid[0] == '\0')
+        return false;
     wifiConnRecord rec = {
         .bssid_set = false,
         .is_wpa3_supported = true,
         .listen_interval = -1,
     };
-    strncpy((char *)rec.ssid, WIFI_HTTP_SSID, sizeof(rec.ssid) - 1);
-    strncpy((char *)rec.password, WIFI_HTTP_PASSWORD, sizeof(rec.password) - 1);
+    strncpy((char *)rec.ssid, ssid, sizeof(rec.ssid) - 1);
+    strncpy((char *)rec.password, password, sizeof(rec.password) - 1);
     // Так же делает boot.lua: wifi.enable(true), wifi.setMode(WIFI_STA), wifi.connect(...)
     espFeatureEnable(ftWifi, true);
     wifiSetWiFiMode(WIFI_MODE_STA);
     if (!wifiConnect(&rec, true))
-        ERR("wifi_http: connect to %s failed\n", WIFI_HTTP_SSID);
+    {
+        ERR("wifi_http: connect to %s failed\n", ssid);
+        return false;
+    }
+    return true;
+}
+
+// Адрес от DHCP на интерфейсе Wi-Fi STA. Если DHCP не ответил, стек берёт
+// link-local 169.254.x.x без шлюза — в интернет так не выйти
+bool wifiHttpOnline(void)
+{
+    return FreeRTOS_IsEndPointUp(&staNetEndPoint) && staNetEndPoint.ipv4_settings.ulGatewayAddress != 0;
 }
 
 static void httpTask(void *arg)
 {
     (void)arg;
-    wifiConnectSta();
+    wifiHttpJoin(WIFI_HTTP_SSID, WIFI_HTTP_PASSWORD);
     for (;;)
     {
-        // Ждём адрес от DHCP на интерфейсе Wi-Fi STA. Если DHCP не ответил, стек берёт
-        // link-local 169.254.x.x без шлюза — в интернет так не выйти, ждём дальше
-        if (!FreeRTOS_IsEndPointUp(&staNetEndPoint) || staNetEndPoint.ipv4_settings.ulGatewayAddress == 0)
+        if (!wifiHttpOnline())
         {
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
         wifiHttpResult r;
-        int e = wifiHttpGet(WIFI_HTTP_HOST, WIFI_HTTP_PATH, &r);
+        int e = wifiHttpGet(WIFI_HTTP_HOST, WIFI_HTTP_PATH, NULL, 0, &r);
         if (e == 0)
             INF("wifi_http: GET http://%s%s -> %d, %lu bytes, %lu ms\n",
                 WIFI_HTTP_HOST, WIFI_HTTP_PATH, r.status, r.bytes, r.ms);

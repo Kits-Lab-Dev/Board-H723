@@ -5,8 +5,17 @@
 #include "FreeRTOS_DNS.h"
 #include "stdbool.h"
 #include "stdint.h"
+#include <time.h>
 
 #define NTP_PORT    123
+
+// Часы RTC идут по местному времени этого пояса (часы от UTC): NTP-клиент прибавляет его
+#ifndef TIME_ZONE
+#define TIME_ZONE (+3)
+#endif
+
+// Время RTC в секундах от 1970 (местное время пояса TIME_ZONE)
+time_t get_time(time_t *puxTime);
 
 typedef uint32_t           quint32;
 typedef int32_t            qint32;

@@ -3,10 +3,6 @@
 #include "rtc.h"
 #include "stdint.h"
 
-#ifndef TIME_ZONE
-#define TIME_ZONE (+3)
-#endif
-
 #define TIME_ZONE_SEC (TIME_ZONE * 3600)
 
 enum EStatus
