@@ -98,11 +98,11 @@ static int callbackReqSuccess(WOLFSSH *ssh, void *buf, word32 sz, void *ctx)
 {
     if ((WOLFSSH *)ssh != *(WOLFSSH **)ctx)
     {
-        printf("ssh(%x) != ctx(%x)\n", (unsigned int)ssh,
-               (unsigned int)*(WOLFSSH **)ctx);
+        ERR("SSH: ssh(%x) != ctx(%x)\n", (unsigned int)ssh,
+            (unsigned int)*(WOLFSSH **)ctx);
         return WS_FATAL_ERROR;
     }
-    printf("Global Request Success[%d]: %s\n", sz, sz > 0 ? buf : "No payload");
+    INF("SSH: global request success [%d]: %s\n", sz, sz > 0 ? buf : "No payload");
     return WS_SUCCESS;
 }
 
@@ -110,11 +110,11 @@ static int callbackReqFailure(WOLFSSH *ssh, void *buf, word32 sz, void *ctx)
 {
     if ((WOLFSSH *)ssh != *(WOLFSSH **)ctx)
     {
-        printf("ssh(%x) != ctx(%x)\n", (unsigned int)ssh,
-               (unsigned int)*(WOLFSSH **)ctx);
+        ERR("SSH: ssh(%x) != ctx(%x)\n", (unsigned int)ssh,
+            (unsigned int)*(WOLFSSH **)ctx);
         return WS_FATAL_ERROR;
     }
-    printf("Global Request Failure[%d]: %s\n", sz, sz > 0 ? buf : "No payload");
+    WRN("SSH: global request failure [%d]: %s\n", sz, sz > 0 ? buf : "No payload");
     return WS_SUCCESS;
 }
 

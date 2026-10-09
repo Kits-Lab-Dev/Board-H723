@@ -89,7 +89,6 @@ static void spiDMAInit(void)
     CLEAR_BIT(hspi->Instance->CFG1, SPI_CFG1_TXDMAEN | SPI_CFG1_RXDMAEN);
 
     hdmarx->DMAmuxChannelStatus->CFR = hdmarx->DMAmuxChannelStatusMask;
-    // hdmarx->DMAmuxRequestGenStatus->RGCFR = hdmarx->DMAmuxRequestGenStatusMask;
     DMA_Base_Registers *regs_dmarx = (DMA_Base_Registers *)hdmarx->StreamBaseAddress;
     /* Clear all interrupt flags at correct offset within the register */
     regs_dmarx->IFCR = 0x3FUL << (hdmarx->StreamIndex & 0x1FU);
@@ -101,12 +100,10 @@ static void spiDMAInit(void)
     ((DMA_Stream_TypeDef *)hdmarx->Instance)->M0AR = (uint32_t)rxbuff;
 
     /* Enable Common interrupts*/
-    // MODIFY_REG(((DMA_Stream_TypeDef *)hdmarx->Instance)->CR, (DMA_IT_TC), (DMA_IT_TC));
-    __HAL_DMA_DISABLE_IT(hdmarx, (DMA_IT_TE || DMA_IT_HT || DMA_IT_TE || DMA_IT_FE || DMA_IT_DME));
-    // __HAL_DMA_ENABLE_IT(hdmarx, DMA_IT_TC);
+    __HAL_DMA_DISABLE_IT(hdmarx, DMA_IT_TE | DMA_IT_HT | DMA_IT_DME);
+    __HAL_DMA_DISABLE_IT(hdmarx, DMA_IT_FE);
 
     hdmatx->DMAmuxChannelStatus->CFR = hdmatx->DMAmuxChannelStatusMask;
-    // hdmatx->DMAmuxRequestGenStatus->RGCFR = hdmatx->DMAmuxRequestGenStatusMask;
     DMA_Base_Registers *regs_dmatx = (DMA_Base_Registers *)hdmatx->StreamBaseAddress;
     /* Clear all interrupt flags at correct offset within the register */
     regs_dmatx->IFCR = 0x3FUL << (hdmatx->StreamIndex & 0x1FU);
@@ -120,8 +117,8 @@ static void spiDMAInit(void)
     MODIFY_REG(hspi->Instance->CR2, SPI_CR2_TSIZE, (uint16_t)SPI_BUF_LEN);
     /* Enable Tx DMA Request */
 
-    __HAL_DMA_DISABLE_IT(hdmatx, (DMA_IT_TE || DMA_IT_HT || DMA_IT_TE || DMA_IT_FE || DMA_IT_DME));
-    // __HAL_DMA_ENABLE_IT(hdmatx, DMA_IT_TC);
+    __HAL_DMA_DISABLE_IT(hdmatx, DMA_IT_TE | DMA_IT_HT | DMA_IT_DME);
+    __HAL_DMA_DISABLE_IT(hdmatx, DMA_IT_FE);
 
     /* Enable the SPI Error Interrupt Bit */
     __HAL_SPI_DISABLE_IT(hspi, (SPI_IT_EOT | SPI_IT_OVR | SPI_IT_UDR | SPI_IT_FRE | SPI_IT_MODF));
@@ -212,58 +209,6 @@ void ESP_EXTI_Callback()
         portYIELD_FROM_ISR(woken);
     }
 }
-
-// static void TxRxCmplt(SPI_HandleTypeDef *hspi)
-// {
-//     xSemaphoreGiveFromISR(txCmpltSem, NULL);
-// }
-
-// bool spiTransaction1(uint8_t *tx)
-// {
-//     if (xSemaphoreTake(transactionMutex, portMAX_DELAY) != pdTRUE)
-//     {
-//         return false;
-//     }
-
-//     bool ret = false;
-//     if (!tx)
-//     {
-//         memset(txbuff, 0, 3); // стираем только type и len
-//         tx = txbuff;
-//     }
-
-//     HAL_SPI_RegisterCallback(hspi, HAL_SPI_TX_RX_COMPLETE_CB_ID, TxRxCmplt);
-//     ret = HAL_SPI_TransmitReceive_DMA(hspi, tx, rxbuff, SPI_BUF_LEN) == HAL_OK;
-//     ret = xSemaphoreTake(txCmpltSem, 1000) == pdTRUE;
-
-//     if (ret)
-//     {
-//         spi_buf *buf = (spi_buf *)rxbuff;
-//         if ((!buf->len) || (buf->len > SPI_BUF_DATA_LEN))
-//         {
-//             ret = false;
-//         }
-//         else
-//         {
-//             switch (buf->type)
-//             {
-//             case ESP_STA:
-//                 xNetworkInterfaceInput(&staNetInterface, buf);
-//                 break;
-//             case ESP_AP:
-//                 xNetworkInterfaceInput(&apNetInterface, buf);
-//                 break;
-//             case ESP_CONTROL:
-//                 control_rx_process(buf->data, buf->len);
-//                 break;
-//             default:
-//                 break;
-//             }
-//         }
-//     }
-//     xSemaphoreGive(transactionMutex);
-//     return ret;
-// }
 
 bool spiTransaction(uint8_t *tx)
 {

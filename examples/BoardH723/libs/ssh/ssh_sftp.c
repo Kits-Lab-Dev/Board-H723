@@ -61,9 +61,8 @@ static int waitRecv(int fd, int timeoutSec)
 
 /* Цикл SFTP по образцу sftp_worker из examples/echoserver wolfSSH.
  * wolfSSH_worker вызывается только когда от клиента есть данные: сокет блокирующий,
- * и без проверки сервер засыпал в recv, пока в буфере канала лежали ещё не
- * обработанные запросы клиента (OpenSSH sftp шлёт их пачкой) — скачивание
- * обрывалось за десятки КБ до конца файла. */
+ * и worker, вызванный без данных, засыпает в recv, хотя в буфере канала ещё лежат
+ * необработанные запросы (OpenSSH sftp шлёт их пачкой). */
 int SFTPWorker(thread_ctx_t *threadCtx)
 {
     WOLFSSH *ssh = threadCtx->ssh;

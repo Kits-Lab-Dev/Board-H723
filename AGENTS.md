@@ -48,7 +48,7 @@ cmake --build build/Release
 Результат — `build/Release/BoardH723.elf` / `.hex` / `.bin` (ELF с отладочной информацией).
 Опции: `-DH723_WITH_SSH=OFF` убирает SSH/SFTP (wolfSSH под GPLv3 — с ним вся прошивка GPLv3),
 `-DH723_WITH_TLS=OFF` убирает HTTPS для Lua, `-DH723_WITH_LUA=OFF` — Lua целиком (вместе с HTTPS
-для него; прошивка с SSH — 482 КБ вместо 811 КБ, место под LVGL). `-DH723_IDLE_SLEEP=ON` —
+для него; прошивка с SSH — 482 КБ вместо 808 КБ, место под LVGL). `-DH723_IDLE_SLEEP=ON` —
 сон ядра командой WFI, когда задачам нечего делать (кристалл в простое 51 °C вместо 66 °C; загрузка
 в `top` считается по тактам ядра). Собирается GCC 13 (STM32CubeCLT)
 и GCC 14 (Arm GNU Toolchain).

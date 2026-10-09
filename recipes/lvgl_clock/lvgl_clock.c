@@ -269,7 +269,7 @@ static bool fetchWeather(const Settings *s, Weather *w, int32_t *utcOffset)
     w->tmin = jsonNumber(r.body, day, "temperature_2m_min", &tmin) ? roundf2i(tmin) : w->temp;
     w->tmax = jsonNumber(r.body, day, "temperature_2m_max", &tmax) ? roundf2i(tmax) : w->temp;
     char t[20] = "";
-    jsonString(r.body, cur, "time", t, sizeof(t)); // "2026-10-07T08:30"
+    jsonString(r.body, cur, "time", t, sizeof(t)); // "2026-03-14T08:30"
     snprintf(w->time, sizeof(w->time), "%.5s", strlen(t) >= 16 ? t + 11 : "");
     *utcOffset = (int32_t)offset;
     INF("lvgl_clock: weather %d C (feels %d), code %d, humidity %d %%, wind %d.%d m/s, UTC%+ld s, %s %lu ms\n",
@@ -728,7 +728,7 @@ static void uiTask(void *arg)
     lv_rand_set_seed(DWT->CYCCNT ^ xTaskGetTickCount());
 
     buildScreen();
-    // 30 кадров в секунду вместо 50: медленным пузырям хватает, а каждый кадр с пузырями —
+    // 30 кадров в секунду: медленным пузырям хватает, а каждый кадр с пузырями —
     // это перерисовка кусков фона и крупных цифр под ними
     lv_timer_set_period(lv_display_get_refr_timer(lv_display_get_default()), 33);
     INF("lvgl_clock: screen ready\n");

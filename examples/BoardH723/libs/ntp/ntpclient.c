@@ -146,18 +146,6 @@ static void prvReadTime(struct SNtpPacket *pxPacket)
     uxCurrentSeconds += TIME_ZONE_SEC; 
 
     set_time(&uxCurrentSeconds);
-
-    // struct tm xTimeStruct;
-    // gmtime_r(&uxCurrentSeconds, &xTimeStruct);
-    // INF("NTP time: %u/%u/%02u %2u:%02u:%02u.%03u (%lu ms)\n",
-    //     (unsigned)xTimeStruct.tm_mday,
-    //     (unsigned)xTimeStruct.tm_mon + 1,
-    //     (unsigned)xTimeStruct.tm_year + 1900,
-    //     (unsigned)xTimeStruct.tm_hour,
-    //     (unsigned)xTimeStruct.tm_min,
-    //     (unsigned)xTimeStruct.tm_sec,
-    //     (unsigned)uxCurrentMS,
-    //     uxTravelTime);
 }
 
 static void prvNTPPacketInit()

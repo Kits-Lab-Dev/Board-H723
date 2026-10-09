@@ -197,7 +197,6 @@ static inline void setDeInitTim(TIM_TypeDef *tim)
 
 static const ADC_Map adcMap[] = {
     {ADC2, PC1, ADC_CHANNEL_11},
-    // {ADC1, PA1, ADC_CHANNEL_17}, // FIXME: Не работает на ADC1
     {ADC2, PA2, ADC_CHANNEL_14},
     {ADC2, PA3, ADC_CHANNEL_15},
     {ADC2, PA4, ADC_CHANNEL_18},

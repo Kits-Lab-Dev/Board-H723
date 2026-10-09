@@ -154,7 +154,7 @@ if not success then print(msg) end
 
 **Пример:**
 ```lua
-local success, msg = lwifi.startAP("H723-Test", "kitslab123", 6)
+local success, msg = lwifi.startAP("H723-Test", "your_password", 6)
 if not success then print(msg) end
 ```
 

@@ -152,16 +152,6 @@ bool sdDiskMount()
     {
         memset(&sdfs, 0, sizeof(FATFS));
         isMounted = f_mount(&sdfs, "/SD", 1) == FR_OK;
-        // if (!isMounted)
-        // {
-        //     WRN("Formatting SD card...\r\n");
-        //     char *work = (char *)pvPortMalloc(1024);
-        //     FRESULT res = f_mkfs("/SD", &param, work, 1024);
-        //     vPortFree(work);
-        //     if (res != FR_OK)
-        //         return false;
-        //     isMounted = f_mount(&sdfs, "/SD", 1) == FR_OK;
-        // }
     }
     return isMounted;
 }

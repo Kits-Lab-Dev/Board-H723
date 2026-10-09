@@ -22,12 +22,12 @@ cmake --preset Release -DH723_RECIPES="wifi_http"
 
 ## Вывод на плате
 
-Wi-Fi поднял `boot.lua`, плата получила адрес 192.168.0.16. Строки `->` с адресом — отладочный
+Wi-Fi поднял `boot.lua`, плата получила адрес 192.168.1.50. Строки `->` с адресом — отладочный
 уровень лога (`DBG`):
 
 ```
 wifi_http: started, GET http://example.com/ every 60 s
-IP Address: 192.168.0.16
+IP Address: 192.168.1.50
 wifi_http: example.com -> 8.6.112.6
 wifi_http: GET http://example.com/ -> 200, 932 bytes, 3160 ms
 wifi_http: example.com -> 8.6.112.6
@@ -59,8 +59,8 @@ wifi_http: GET http://example.com/ -> 200, 930 bytes, 5417 ms
 - **DNS и несколько адресов.** `FreeRTOS_getaddrinfo` спрашивает DNS-сервер, выданный роутером, и
   возвращает список адресов. У крупных сайтов адресов несколько, и какой-то может не отвечать —
   `httpConnect` пробует их по очереди. Кэш DNS хранит до 4 адресов на имя
-  (`ipconfigDNS_CACHE_ADDRESSES_PER_ENTRY` в `config/FreeRTOSIPConfig.h`); с одним адресом на имя
-  повторный запрос из кэша получал бы только последний адрес ответа, даже если он мёртвый.
+  (`ipconfigDNS_CACHE_ADDRESSES_PER_ENTRY` в `config/FreeRTOSIPConfig.h`), поэтому повторный запрос
+  из кэша отдаёт весь список, а не один последний адрес ответа — он может оказаться мёртвым.
   Ошибки FreeRTOS+TCP — отрицательные `pdFREERTOS_ERRNO_*`.
 - **Таймауты.** `FREERTOS_SO_RCVTIMEO`/`SNDTIMEO` по 5 с: без них `recv` ждёт вечно, если
   сервер замолчал.

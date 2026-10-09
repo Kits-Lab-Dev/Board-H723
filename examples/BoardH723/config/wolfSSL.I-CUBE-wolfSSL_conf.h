@@ -212,9 +212,9 @@ extern "C"
     WOLFSSL_STM32F7, WOLFSSL_STM32H7, WOLFSSL_STM32L4, WOLFSSL_STM32L5,
     WOLFSSL_STM32G0, WOLFSSL_STM32WB and WOLFSSL_STM32U5 */
 #define WOLFSSL_STM32H7
-/* Порт RNG для STM32 в wolfCrypt на каждый seed делает HAL_RNG_Init/DeInit и
- * выключает тактирование RNG для всей платы (Mbed TLS остаётся без энтропии).
- * Seed берётся из общего hw_random() в libs/tls/tls_port.c. */
+/* NO_STM32_RNG: порт RNG для STM32 в wolfCrypt на каждый seed делает
+ * HAL_RNG_Init/DeInit и выключает тактирование RNG для всей платы, а Mbed TLS
+ * остаётся без энтропии. Seed берётся из общего hw_random() в libs/tls/tls_port.c. */
 #define NO_STM32_RNG
 int hw_random(unsigned char *output, unsigned int len);
 #define CUSTOM_RAND_GENERATE_SEED hw_random

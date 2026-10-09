@@ -12,7 +12,7 @@
 - `config/` - Настройки библиотек (FreeRTOS, FreeRTOS+TCP, FatFs, lwmem, Mbed TLS, wolfCrypt, wolfSSH)
 - `libs/` - Наши библиотеки
 - `cmake/patch_source.cmake` - Точечные правки сторонних файлов при сборке
-- `Core/`, `Drivers/` - Файлы сгенерированые STM32CubeMX
+- `Core/`, `Drivers/` - Файлы сгенерированные STM32CubeMX
 - `../../third_party/` - Сторонние библиотеки (git submodule), см. [THIRD_PARTY.md](../../THIRD_PARTY.md)
 
 ## Требования
@@ -41,7 +41,7 @@
   - `libs/lua/spi` SPI для Lua. [SPI doc](libs/lua/docs/spi.md)
   - `libs/lua/wire` I2C для Lua. [I2C doc](libs/lua/docs/i2c.md)
   - `libs/lua/lthread` Библиотека многопоточности для Lua. [Lua Thread doc](libs/lua/docs/lthread.md)
-  - `libs/lua/wifi` Библиотека управления WiFi для Lua. [Lua Thread doc](libs/lua/docs/wifi.md)
+  - `libs/lua/wifi` Библиотека управления WiFi для Lua. [Lua WiFi doc](libs/lua/docs/wifi.md)
   - `libs/lua/rtos` Библиотека для работы с FreeRTOS и системными ресурсами. [Lua RTOS doc](libs/lua/docs/rtos.md)
   - [LuaSocket](https://lunarmodules.github.io/luasocket/) Библиотека для работы с сокетами (`third_party/luasocket`)
   - `ssl` — HTTPS-клиент на Mbed TLS с интерфейсом [LuaSec](https://github.com/lunarmodules/luasec/wiki) (`libs/lua/ssl`, опция `H723_WITH_TLS`): TLS 1.2, SNI, ALPN, проверка сертификата сервера (`verify = "peer"`, `cafile = "/SD/lib/ssl/certs/roots.pem"`)
@@ -49,7 +49,7 @@
 ## SSH и SFTP
 
 К плате можно подключиться по SSH и SFTP используя USB-NCM (USB-Ethernet) или Wi-Fi.
-Для первого подключения можно использовать вход по паролю, а затем настроить вход по ключу. Пароль по умолчанию для SSH указан в [CMakeLists.txt](/CMakeLists.txt) проекта. Если на SD-карте `(/SD/.ssh/mcu.key.pub)` расположен исправный ключ, то вход по паролю будет отключен.
+Для первого подключения можно использовать вход по паролю, а затем настроить вход по ключу. Пароль при первом запуске плата генерирует сама, сохраняет в `/SD/.ssh/password` на карте и печатает в лог (USART1); сменить его можно, исправив этот файл. Если на SD-карте `(/SD/.ssh/mcu.key.pub)` расположен исправный ключ, то вход по паролю будет отключен.
 
 ### Шаги для генерации пары ключей
 

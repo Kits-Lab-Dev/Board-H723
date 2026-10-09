@@ -1,4 +1,5 @@
 #include "ssh_auth.h"
+#include "log.h"
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/coding.h>
 
@@ -240,7 +241,7 @@ int LoadKeyboardList(StrList *strList, PwMapList *mapList)
         }
         else
         {
-            fprintf(stderr, "Ignoring password: %s\n", names);
+            WRN("SSH: ignoring password: %s\n", names);
         }
 
         strList = strList->next;
@@ -310,12 +311,12 @@ int LoadPubKeyList(StrList *strList, int format, PwMapList *mapList)
             }
             else
             {
-                fprintf(stderr, "File error: %s\n", names);
+                WRN("SSH: file error: %s\n", names);
             }
         }
         else
         {
-            fprintf(stderr, "Ignoring key: %s\n", names);
+            WRN("SSH: ignoring key: %s\n", names);
         }
 
         WFREE(buf, NULL, 0);

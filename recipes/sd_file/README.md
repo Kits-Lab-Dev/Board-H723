@@ -16,9 +16,9 @@ cmake --preset Release -DH723_RECIPES="sd_file"
 ```
 sd_file: started, log /SD/recipes/log.txt every 10 s
 sd_file: 4096 KB write 10240 KB/s, read 10694 KB/s
-sd_file: /SD/recipes/log.txt += 2026-10-06 10:02:03 #1 uptime 3 s
+sd_file: /SD/recipes/log.txt += 2026-03-14 10:02:03 #1 uptime 3 s
 sd_file: size 68 bytes
-sd_file: /SD/recipes/log.txt += 2026-10-06 10:02:13 #2 uptime 13 s
+sd_file: /SD/recipes/log.txt += 2026-03-14 10:02:13 #2 uptime 13 s
 sd_file: size 103 bytes
 ```
 

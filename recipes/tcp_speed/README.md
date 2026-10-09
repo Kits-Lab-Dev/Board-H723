@@ -19,7 +19,7 @@ python ../../tools/dfu_flash.py build/Speed/BoardH723.hex
 (прошивка с Lua). Адрес платы — в логе (`IP Address: ...`), дальше на ПК:
 
 ```bash
-python recipes/tcp_speed/tcp_speed.py 192.168.0.16 10
+python recipes/tcp_speed/tcp_speed.py 192.168.1.50 10
 ```
 
 ## Вывод
@@ -35,7 +35,7 @@ board->PC: 34.8 Mbit/s (43487800 B, 10.0 s)
 
 ```
 tcp_speed: power save 1 -> 0
-IP Address: 192.168.0.16
+IP Address: 192.168.1.50
 tcp_speed: listening, rx port 5001, tx port 5002
 tcp_speed: rx 32833536 bytes in 10319 ms, 25.4 Mbit/s
 tcp_speed: tx 43540480 bytes in 10013 ms, 34.7 Mbit/s
@@ -72,7 +72,6 @@ tcp_speed: tx 43540480 bytes in 10013 ms, 34.7 Mbit/s
 - **Потолок.** Кадры между STM32 и ESP32-C2 идут по SPI 62,5 МГц транзакциями по 1600 байт —
   около 0,2 мс на кадр, это примерно 40 Мбит/с на отправку. Приём ограничивает ESP32-C2: радио
   и около 25 КБ свободной памяти на буферы.
-- **Прошивка ESP32-C2.** Цифры выше — с прошивкой
-  [esp32c2phy](https://github.com/Kits-Lab-Dev/esp32c2phy) от 07.10.2026: двойной буфер SPI,
-  приём из эфира без копии. Со старой прошивкой — около 10 Мбит/с. Как прошить ESP32-C2 —
-  `AGENTS.md`, раздел «Прошивка».
+- **Прошивка ESP32-C2.** Цифры выше получены с актуальной прошивкой
+  [esp32c2phy](https://github.com/Kits-Lab-Dev/esp32c2phy) (ветка `main`): двойной буфер SPI,
+  приём из эфира без копии. Как прошить ESP32-C2 — `AGENTS.md`, раздел «Прошивка».

@@ -47,15 +47,15 @@ lvgl_clock: started
 lvgl_clock: Wi-Fi: подключение к my_wifi…
 gt911: product 911, panel 800x480
 lvgl_clock: screen ready
-IP Address: 192.168.0.7
-lvgl_clock: Wi-Fi: my_wifi, адрес 192.168.0.7
+IP Address: 192.168.1.50
+lvgl_clock: Wi-Fi: my_wifi, адрес 192.168.1.50
 lvgl_clock: Москва -> 55.7520, 37.6178 (585 ms)
 wifi_http: connect api.open-meteo.com (94.130.142.35):80 error -116
 lvgl_clock: weather 10 C (feels 8), code 2, humidity 81 %, wind 2.9 m/s, UTC+10800 s, historical-forecast-api.open-meteo.com 487 ms
 ```
 
-Здесь провайдер не пускал к адресу `api.open-meteo.com`, и прогноз пришёл со второго сервера
-(см. ниже). Загрузка процессора (`top` в SSH) — около 23 % с пузырями и 3 % без них.
+Если провайдер не пускает к адресу `api.open-meteo.com` (строка с `error -116`), прогноз приходит
+со второго сервера (см. ниже). Загрузка процессора (`top` в SSH) — около 23 % с пузырями и 3 % без них.
 
 Что видно на экране, если что-то не так, — в строке состояния внизу слева: нет файла
 настроек, подключение к Wi-Fi, город не найден, сервер погоды не отвечает.
@@ -80,7 +80,7 @@ lvgl_clock: weather 10 C (feels 8), code 2, humidity 81 %, wind 2.9 m/s, UTC+108
 - **HTTP без TLS.** open-meteo отвечает и по обычному HTTP, поэтому хватает сокетов
   FreeRTOS+TCP (`wifiHttpGet` из `wifi_http`) — без Mbed TLS и его ~60 КБ Flash. Ответ
   приходит кусками `chunked`; `wifiHttpGet` склеивает их, тело — обычная строка.
-- **JSON без библиотеки.** Ответ короткий и одинаковый по устройству: `jsonNumber` ищет
+- **JSON без библиотеки.** Ответ короткий и одинаковый по структуре: `jsonNumber` ищет
   `"ключ":` после начала нужного объекта (`"current":{`) и читает число `strtof`. Для чего-то
   сложнее подойдёт библиотека разбора JSON, например cJSON.
 - **Время.** NTP-клиент (`libs/ntp`) ставит часы RTC по поясу `TIME_ZONE` (по умолчанию +3).

@@ -308,8 +308,8 @@ _ssize_t _read_r(struct _reent *r, int file, void *ptr, size_t len)
 {
     if (file < FN)
     {
-        int res = 0; // FIXME: read from console
-        return res;
+        /* Чтение из консоли не поддерживается: stdin пуст */
+        return 0;
     }
     if (file > F_MAX)
     {

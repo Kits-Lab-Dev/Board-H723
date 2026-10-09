@@ -47,7 +47,7 @@ set(FREERTOS_TCP_DIR ${THIRD_PARTY}/FreeRTOS-Plus-TCP/source)
 
 # FreeRTOS+TCP откладывает ACK на полный сегмент до 20 мс: при приёме потока отправитель
 # ждёт подтверждений, и скорость упирается в окно / 20 мс (около 18 Мбит/с при 46 КБ).
-# Ждать столько же, сколько для коротких сегментов, — 2 мс
+# Задержка для полного сегмента сокращена до 2 мс — как для коротких.
 include(${CMAKE_SOURCE_DIR}/cmake/patch_source.cmake)
 patch_source(${FREERTOS_TCP_DIR}/FreeRTOS_TCP_Transmission.c ${CMAKE_BINARY_DIR}/patched/FreeRTOS_TCP_Transmission.c
     FIND "pdMS_TO_TICKS( tcpDELAYED_ACK_LONGER_DELAY_MS )"

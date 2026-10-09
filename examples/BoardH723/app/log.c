@@ -162,13 +162,11 @@ void mcuDebug(DebugLevel level, char *msg, ...)
     va_start(p_args, msg);
     r = vsprintf(printBuf, msg, p_args);
     va_end(p_args);
-    /* printf(buf); */
     if (r > 0)
     {
         _write(0, printBuf, strlen(printBuf));
     }
     _write(0, "\033[0m", 4);
-    // _write(0, "\r\n", 2);
     xMutexGive(printMutex);
 }
 
